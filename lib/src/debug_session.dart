@@ -9,15 +9,14 @@ class DebugSession {
   final DebugAdapter _adapter;
   int _sequence = 1;
 
-  /// Runs a DAP debug session using [adapter] communicating over [input]
+  /// Starts a DAP debug session using [adapter] communicating over [input]
   /// and [output].
-  static void run(
+  static DebugSession start(
     Stream<List<int>> input,
     StreamSink<List<int>> output,
     DebugAdapter adapter,
   ) {
-    final session =
-        DebugSession._(LspByteStreamServerChannel(input, output), adapter);
+    return DebugSession._(LspByteStreamServerChannel(input, output), adapter);
   }
 
   DebugSession._(this._channel, this._adapter) {
