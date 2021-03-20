@@ -42,6 +42,8 @@ abstract class DapTestServer {
 }
 
 class _InProcess extends DapTestServer {
+  // TODO: Use this to shut down.
+  // ignore: unused_field
   final DebugSession _session;
   _InProcess._(
       StreamSink<List<int>> stdin, Stream<List<int>> stdout, this._session)
@@ -62,6 +64,8 @@ class _InProcess extends DapTestServer {
 }
 
 class _OutOfProcess extends DapTestServer {
+  // TODO: Use this to shut down.
+  // ignore: unused_field
   final Process _process;
   _OutOfProcess._(this._process) : super._(_process.stdin, _process.stdout);
 
