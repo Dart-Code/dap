@@ -1,0 +1,10 @@
+.dart_tool/
+.DS_Store
+.packages
+.pub/
+.test_results/
+.vscode/.browse.VC.db*
+*.log
+build/
+coverage/
+logs/
