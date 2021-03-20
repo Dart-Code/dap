@@ -1,0 +1,17 @@
+name: dap
+description: An implementation of the Debug Adapter Protocol for Dart, written in Dart.
+version: 0.0.1
+repository: https://github.com/Dart-Code/DAP
+issue_tracker: https://github.com/Dart-Code/Dart-Code/issues
+
+environment:
+  sdk: '>=2.12.0 <3.0.0'
+
+executables:
+  dap: main
+
+dependencies:
+
+dev_dependencies:
+  pedantic: ^1.11.0
+  test:
