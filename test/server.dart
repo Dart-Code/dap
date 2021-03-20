@@ -9,7 +9,7 @@ import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_chann
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
 
-const _debugTrace = false;
+const _debugTrace = true;
 
 List<int> _trace(String prefix, List<int> data) {
   if (_debugTrace) {
@@ -29,10 +29,14 @@ abstract class DapTestServer {
             ..stream.listen((data) => stdin.add(_trace('==> ', data))),
         );
 
-  static FutureOr<DapTestServer> forEnvironment() =>
-      Platform.environment['DAP_EXTERNAL'] == 'true'
-          ? DapTestServer.outOfProcess()
-          : DapTestServer.inProcess();
+  static FutureOr<DapTestServer> forEnvironment() {
+    final inProc = Platform.environment['DAP_EXTERNAL'] != 'true';
+    if (_debugTrace) {
+      print('Using ${inProc ? 'in-process' : 'out-of-process'} debug adapter.');
+    }
+    return inProc ? DapTestServer.inProcess() : DapTestServer.outOfProcess();
+  }
+
   static FutureOr<DapTestServer> inProcess() => _InProcess.create();
   static FutureOr<DapTestServer> outOfProcess() => _OutOfProcess.create();
 }

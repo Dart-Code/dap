@@ -1,0 +1,55 @@
+name: Analyze and Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    name: "${{ matrix.bot }} (${{ matrix.dart-version }}/${{ matrix.code-version }}/${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    # We want to run on external PRs, but not on our own internal PRs as they'll be run
+    # by the push to the branch.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        build-version: [stable, dev]
+        include:
+          - build-version: stable
+            dart-version: stable
+            flutter-version: stable
+          - build-version: dev
+            dart-version: dev
+            flutter-version: dev
+
+    steps:
+
+      - uses: actions/checkout@v1
+
+      - name: Setup Flutter ${{ matrix.flutter-version }}
+        id: flutter
+        uses: DanTup/gh-actions/setup-flutter@v1.1.0
+        with:
+          channel: ${{ matrix.flutter-version }}
+
+      - run: flutter update-packages
+        if: matrix.bot == 'flutter_repo'
+
+      - name: Print Flutter version
+        run: flutter --version
+
+      - name: pub get
+        run: pub get
+
+      # - name: dart analyze
+      #   run: dart analyze
+
+      - name: dart test (In Process)
+        run: dart test
+
+      - name: dart test (Out of Process)
+        run: dart test
+        env:
+          DAP_EXTERNAL: true
