@@ -1,0 +1,30 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Current File",
+			"request": "launch",
+			"type": "dart",
+			"program": "${file}"
+		},
+		{
+			"name": "Current Test File (Out of Process)",
+			"request": "launch",
+			"type": "dart",
+			"program": "${file}",
+			"codeLens": {
+				"for": [
+					"run-test",
+					"run-test-file",
+					"debug-test",
+					"debug-test-file"
+				],
+				"path": "test",
+				"title": "${debugType} (Out-of-Proc)"
+			},
+			"env": {
+				"DAP_EXTERNAL": true,
+			}
+		}
+	]
+}
