@@ -1,0 +1,115 @@
+// Copyright (c) 2018, the Dart project authors. Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
+
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:dap/src/debug_protocol.dart';
+import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_packet_transformer.dart';
+
+class LspByteStreamServerChannel {
+  final Stream<List<int>> _input;
+
+  final StreamSink<List<int>> _output;
+
+  /// Completer that will be signalled when the input stream is closed.
+  final Completer _closed = Completer();
+
+  /// True if [close] has been called.
+  bool _closeRequested = false;
+
+  LspByteStreamServerChannel(this._input, this._output);
+
+  /// Future that will be completed when the input stream is closed.
+  Future get closed {
+    return _closed.future;
+  }
+
+  void close() {
+    if (!_closeRequested) {
+      _closeRequested = true;
+      assert(!_closed.isCompleted);
+      _closed.complete();
+    }
+  }
+
+  void listen(void Function(ProtocolMessage message) onMessage,
+      {Function? onError, void Function()? onDone}) {
+    _input.transform(LspPacketTransformer()).listen(
+      (String data) => _readMessage(data, onMessage),
+      onError: onError,
+      onDone: () {
+        close();
+        if (onDone != null) {
+          onDone();
+        }
+      },
+    );
+  }
+
+  void sendNotification(Event event) => _sendLsp(event.toJson());
+
+  void sendRequest(Request request) => _sendLsp(request.toJson());
+
+  void sendResponse(Response response) => _sendLsp(response.toJson());
+
+  /// Read a request from the given [data] and use the given function to handle
+  /// the message.
+  void _readMessage(String data, void Function(ProtocolMessage) onMessage) {
+    // Ignore any further requests after the communication channel is closed.
+    if (_closed.isCompleted) {
+      return;
+    }
+    try {
+      final Map<String, Object?> json = jsonDecode(data);
+      final type = json['type'] as String;
+      if (type == 'request') {
+        onMessage(Request.fromJson(json));
+      } else if (type == 'event') {
+        onMessage(Event.fromJson(json));
+      } else if (type == 'response') {
+        onMessage(Response.fromJson(json));
+      } else {
+        _sendParseError();
+      }
+    } catch (e) {
+      _sendParseError();
+    }
+  }
+
+  /// Sends a message prefixed with the required LSP headers.
+  void _sendLsp(Map<String, Object?> json) {
+    // Don't send any further responses after the communication channel is
+    // closed.
+    if (_closeRequested) {
+      return;
+    }
+    final jsonEncodedBody = jsonEncode(json);
+    final utf8EncodedBody = utf8.encode(jsonEncodedBody);
+    final header = 'Content-Length: ${utf8EncodedBody.length}\r\n'
+        'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n';
+    final asciiEncodedHeader = ascii.encode(header);
+
+    // Header is always ascii, body is always utf8!
+    _write(asciiEncodedHeader);
+    _write(utf8EncodedBody);
+  }
+
+  void _sendParseError() {
+    // final error = ResponseMessage(
+    //     error: ResponseError(
+    //         code: ErrorCodes.ParseError, message: 'Unable to parse message'),
+    //     jsonrpc: jsonRpcVersion);
+    // sendResponse(error);
+    throw 'Error';
+  }
+
+  /// Send [bytes] to [_output].
+  void _write(List<int> bytes) {
+    runZonedGuarded(
+      () => _output.add(bytes),
+      (e, s) => close(),
+    );
+  }
+}
