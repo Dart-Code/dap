@@ -1,3 +1,5 @@
+// TODO: This file should be generated from the DAP spec.
+
 Object? specToJson(Object? obj) {
   if (obj is ToJsonable) {
     return obj.toJson();

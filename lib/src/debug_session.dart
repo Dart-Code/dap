@@ -32,6 +32,7 @@ class DebugSession {
   }
 
   void _handleRequest(Request request) {
+    // TODO: This should be generated from the DAP spec.
     if (request.command == 'initialize') {
       _handle(request, _adapter.initializeRequest, InitializeArgs.fromJson);
     } else if (request.command == 'launch') {
@@ -56,6 +57,7 @@ class DebugSession {
           _sequence++, request.sequence, request.command, responseBody);
       _channel.sendResponse(response);
     } catch (e, s) {
+      // TODO: Review whether this error handling is sufficient.
       final response = Response.failure(
           _sequence++, request.sequence, request.command, '$e', '$s');
       _channel.sendResponse(response);
