@@ -9,7 +9,7 @@ import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_chann
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
 
-const _debugTrace = true;
+const _debugTrace = false;
 
 List<int> _trace(String prefix, List<int> data) {
   if (_debugTrace) {

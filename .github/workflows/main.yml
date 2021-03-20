@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   build:
 
-    name: "${{ matrix.bot }} (${{ matrix.dart-version }}/${{ matrix.code-version }}/${{ matrix.os }})"
+    name: "${{ matrix.flutter-version }}/${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     # We want to run on external PRs, but not on our own internal PRs as they'll be run
     # by the push to the branch.
@@ -33,9 +33,6 @@ jobs:
         uses: DanTup/gh-actions/setup-flutter@v1.1.0
         with:
           channel: ${{ matrix.flutter-version }}
-
-      - run: flutter update-packages
-        if: matrix.bot == 'flutter_repo'
 
       - name: Print Flutter version
         run: flutter --version
