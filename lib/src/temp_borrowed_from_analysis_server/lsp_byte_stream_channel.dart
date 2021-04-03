@@ -48,7 +48,7 @@ class LspByteStreamServerChannel {
     );
   }
 
-  void sendNotification(Event event) => _sendLsp(event.toJson());
+  void sendEvent(Event event) => _sendLsp(event.toJson());
 
   void sendRequest(Request request) => _sendLsp(request.toJson());
 

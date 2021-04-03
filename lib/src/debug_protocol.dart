@@ -1,4 +1,4 @@
-// TODO: This file should be generated from the DAP spec.
+// TODO(dantup): This file should be generated from the DAP spec.
 
 Object? specToJson(Object? obj) {
   if (obj is ToJsonable) {
@@ -58,6 +58,18 @@ class Event extends ProtocolMessage {
         json['event'] as String,
         json['body'],
       );
+}
+
+abstract class EventBody implements ToJsonable {
+  String get event;
+}
+
+class InitializedEventBody extends EventBody {
+  @override
+  String get event => 'initialized';
+
+  @override
+  Map<String, Object?> toJson() => {};
 }
 
 class InitializeArgs implements ToJsonable {

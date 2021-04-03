@@ -11,6 +11,7 @@ executables:
   dap: main
 
 dependencies:
+  meta:
 
 dev_dependencies:
   path:

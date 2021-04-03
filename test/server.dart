@@ -4,10 +4,12 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:dap/src/adapters/dart.dart';
-import 'package:dap/src/debug_session.dart';
+import 'package:dap/src/debug_adapter.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
+
+import 'client.dart';
 
 const _debugTrace = false;
 
@@ -19,14 +21,16 @@ List<int> _trace(String prefix, List<int> data) {
 }
 
 abstract class DapTestServer {
-  final LspByteStreamServerChannel client;
+  final DapTestClient client;
 
   DapTestServer._(StreamSink<List<int>> stdin, Stream<List<int>> stdout)
-      // For the client, input/output are reversed.
-      : client = LspByteStreamServerChannel(
-          stdout.map((data) => _trace('<== ', data)),
-          StreamController<List<int>>()
-            ..stream.listen((data) => stdin.add(_trace('==> ', data))),
+      : client = DapTestClient(
+          // For the client, input/output are reversed.
+          LspByteStreamServerChannel(
+            stdout.map((data) => _trace('<== ', data)),
+            StreamController<List<int>>()
+              ..stream.listen((data) => stdin.add(_trace('==> ', data))),
+          ),
         );
 
   static FutureOr<DapTestServer> forEnvironment() {
@@ -42,29 +46,27 @@ abstract class DapTestServer {
 }
 
 class _InProcess extends DapTestServer {
-  // TODO: Use this to shut down.
+  // TODO(dantup): Use this to shut down.
   // ignore: unused_field
-  final DebugSession _session;
+  final BaseDebugAdapter _adapter;
   _InProcess._(
-      StreamSink<List<int>> stdin, Stream<List<int>> stdout, this._session)
+      StreamSink<List<int>> stdin, Stream<List<int>> stdout, this._adapter)
       : super._(stdin, stdout);
 
   static FutureOr<_InProcess> create() {
     final stdinController = StreamController<List<int>>();
     final stdoutController = StreamController<List<int>>();
 
-    final session = DebugSession.start(
-      stdinController.stream,
-      stdoutController.sink,
-      DartDebugAdapter(),
-    );
+    final channel = LspByteStreamServerChannel(
+        stdinController.stream, stdoutController.sink);
+    final adapter = DartDebugAdapter(channel);
 
-    return _InProcess._(stdinController.sink, stdoutController.stream, session);
+    return _InProcess._(stdinController.sink, stdoutController.stream, adapter);
   }
 }
 
 class _OutOfProcess extends DapTestServer {
-  // TODO: Use this to shut down.
+  // TODO(dantup): Use this to shut down.
   // ignore: unused_field
   final Process _process;
   _OutOfProcess._(this._process) : super._(_process.stdin, _process.stdout);
