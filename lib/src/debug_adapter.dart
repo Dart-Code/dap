@@ -35,20 +35,20 @@ abstract class BaseDebugAdapter extends DebugAdapterProtocol {
       // (or example, initializeRequest needs to send its response before then
       // sending InitializedEvent()). To avoid having to create new futures to
       // delay sending the events, pass in a handler that can send the response
-      // that ensures respondWith is called exactly once in the handler.
-      var respondWithCalled = false;
-      void respondWith(TResp responseBody) {
-        assert(!respondWithCalled,
-            'respondWith was called multiple times in ${request.command}');
-        respondWithCalled = true;
+      // that ensures sendResponse is called exactly once in the handler.
+      var sendResponseCalled = false;
+      void sendResponse(TResp responseBody) {
+        assert(!sendResponseCalled,
+            'sendResponse was called multiple times in ${request.command}');
+        sendResponseCalled = true;
         final response = Response.success(
             _sequence++, request.sequence, request.command, responseBody);
         _channel.sendResponse(response);
       }
 
-      await handler(args, request, respondWith);
-      assert(respondWithCalled,
-          'respondWith was not called in ${request.command}');
+      await handler(args, request, sendResponse);
+      assert(sendResponseCalled,
+          'sendResponse was not called in ${request.command}');
     } catch (e, s) {
       // TODO(dantup): Review whether this error handling is sufficient.
       final response = Response.failure(

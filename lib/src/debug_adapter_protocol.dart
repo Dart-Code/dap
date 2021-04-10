@@ -9,11 +9,11 @@ void handleRequest(DebugAdapterProtocol dap, Request request) {
 
 abstract class DebugAdapterProtocol {
   Future<void> disconnectRequest(
-      DisconnectArgs args, Request request, void Function(void) respondWith);
+      DisconnectArgs args, Request request, void Function(void) sendResponse);
   Future<void> initializeRequest(InitializeArgs args, Request request,
-      void Function(Capabilities) respondWith);
+      void Function(Capabilities) sendResponse);
   Future<void> launchRequest(
-      LaunchArgs args, Request request, void Function(void) respondWith);
+      LaunchArgs args, Request request, void Function(void) sendResponse);
 
   @visibleForOverriding
   Future<void> handle<TArg, TResp>(

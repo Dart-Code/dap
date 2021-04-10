@@ -9,23 +9,23 @@ class DartDebugAdapter extends BaseDebugAdapter {
 
   @override
   Future<void> disconnectRequest(DisconnectArgs args, Request request,
-      void Function(void) respondWith) async {
+      void Function(void) sendResponse) async {
     // TODO(dantup): implement disconnectRequest
     throw UnimplementedError();
   }
 
   @override
   Future<void> initializeRequest(InitializeArgs args, Request request,
-      void Function(Capabilities) respondWith) async {
-    respondWith(Capabilities(supportsConfigurationDoneRequest: true));
+      void Function(Capabilities) sendResponse) async {
+    sendResponse(Capabilities(supportsConfigurationDoneRequest: true));
 
     // This must only be sent AFTER the response.
     sendEvent(InitializedEventBody()); // ???
   }
 
   @override
-  Future<void> launchRequest(
-      LaunchArgs args, Request request, void Function(void) respondWith) async {
+  Future<void> launchRequest(LaunchArgs args, Request request,
+      void Function(void) sendResponse) async {
     // TODO(dantup): implement launchRequest
     throw UnimplementedError();
   }
