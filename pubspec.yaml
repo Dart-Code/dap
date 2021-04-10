@@ -12,8 +12,8 @@ executables:
 
 dependencies:
   meta:
+  pedantic: ^1.11.0
 
 dev_dependencies:
   path:
-  pedantic: ^1.11.0
   test:

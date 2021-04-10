@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:dap/src/adapters/dart.dart';
-import 'package:dap/src/debug_adapter.dart';
+import 'package:dap/src/debug_adapter_common.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
@@ -48,7 +48,7 @@ abstract class DapTestServer {
 class _InProcess extends DapTestServer {
   // TODO(dantup): Use this to shut down.
   // ignore: unused_field
-  final BaseDebugAdapter _adapter;
+  final CommonDebugAdapter _adapter;
   _InProcess._(
       StreamSink<List<int>> stdin, Stream<List<int>> stdout, this._adapter)
       : super._(stdin, stdout);

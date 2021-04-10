@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:dap/src/debug_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 
 /// A helper class to simplify interacting with the DapTestServer.
@@ -13,10 +13,17 @@ class DapTestClient {
   DapTestClient(this._client) {
     _client.listen((message) {
       if (message is Response) {
-        final completer = _requestCompleters[message.requestSequence];
+        final completer = _requestCompleters.remove(message.requestSequence);
         completer?.complete(message);
       } else if (message is Event) {
         _eventController.add(message);
+
+        // Handle termination.
+        if (message.event == 'terminated') {
+          _eventController.close();
+          _requestCompleters.forEach((id, completer) => completer.completeError(
+              'Application terminated without a response to request $id'));
+        }
       }
     });
   }

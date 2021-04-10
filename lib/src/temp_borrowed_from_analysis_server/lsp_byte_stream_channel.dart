@@ -5,7 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dap/src/debug_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_packet_transformer.dart';
 
 class LspByteStreamServerChannel {

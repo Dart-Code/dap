@@ -1,4 +1,4 @@
-import 'package:dap/src/debug_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol.dart';
 import 'package:test/test.dart';
 
 import 'server.dart';

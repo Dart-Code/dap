@@ -1,12 +1,14 @@
+import 'package:dap/src/debug_adapter_interface.dart';
 import 'package:dap/src/debug_adapter_protocol.dart';
-import 'package:dap/src/debug_protocol.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 
-abstract class BaseDebugAdapter extends DebugAdapterProtocol {
+/// An implementation of [DebugAdapter] that provides some common
+/// functionality to communicate over a [LspByteStreamServerChannel].
+abstract class CommonDebugAdapter extends DebugAdapter {
   int _sequence = 1;
   final LspByteStreamServerChannel _channel;
 
-  BaseDebugAdapter(this._channel) {
+  CommonDebugAdapter(this._channel) {
     _channel.listen((ProtocolMessage message) {
       if (message is Request) {
         try {
