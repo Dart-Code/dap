@@ -8,14 +8,11 @@ void handleRequest(DebugAdapterProtocol dap, Request request) {
 }
 
 abstract class DebugAdapterProtocol {
-  Future<void> disconnectRequest(
-      DisconnectArgs args, Request request, void Function(void) sendResponse);
-  Future<void> initializeRequest(InitializeArgs args, Request request,
-      void Function(Capabilities) sendResponse);
-  Future<void> launchRequest(
-      LaunchArgs args, Request request, void Function(void) sendResponse);
   Future<void> configurationDoneRequest(ConfigurationDoneArgs args,
       Request request, void Function(void) sendResponse);
+
+  Future<void> disconnectRequest(
+      DisconnectArgs args, Request request, void Function(void) sendResponse);
 
   @visibleForOverriding
   Future<void> handle<TArg, TResp>(
@@ -23,6 +20,12 @@ abstract class DebugAdapterProtocol {
     Future<void> Function(TArg, Request, void Function(TResp)) handler,
     TArg Function(Map<String, Object?>) fromJson,
   );
+
+  Future<void> initializeRequest(InitializeArgs args, Request request,
+      void Function(Capabilities) sendResponse);
+
+  Future<void> launchRequest(
+      LaunchArgs args, Request request, void Function(void) sendResponse);
 
   void _handleRequest(Request request) {
     if (request.command == 'initialize') {

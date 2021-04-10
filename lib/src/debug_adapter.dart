@@ -27,10 +27,6 @@ abstract class BaseDebugAdapter extends DebugAdapterProtocol {
     });
   }
 
-  void sendEvent(EventBody event) =>
-      _channel.sendEvent(Event(_sequence++, event.event, event));
-  void sendRequest(Request request) => _channel.sendRequest(request);
-
   @override
   Future<void> handle<TArg, TResp>(
     Request request,
@@ -58,6 +54,11 @@ abstract class BaseDebugAdapter extends DebugAdapterProtocol {
     assert(sendResponseCalled,
         'sendResponse was not called in ${request.command}');
   }
+
+  void sendEvent(EventBody event) =>
+      _channel.sendEvent(Event(_sequence++, event.event, event));
+
+  void sendRequest(Request request) => _channel.sendRequest(request);
 
   void _handleResponse(Response response) {}
 }

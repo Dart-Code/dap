@@ -8,6 +8,12 @@ class DartDebugAdapter extends BaseDebugAdapter {
   DartDebugAdapter(LspByteStreamServerChannel channel) : super(channel);
 
   @override
+  Future<void> configurationDoneRequest(ConfigurationDoneArgs args,
+      Request request, void Function(void) sendResponse) async {
+    sendResponse(null); // TODO(dantup): Why is this null needed?
+  }
+
+  @override
   Future<void> disconnectRequest(DisconnectArgs args, Request request,
       void Function(void) sendResponse) async {
     // TODO(dantup): implement disconnectRequest
@@ -28,11 +34,5 @@ class DartDebugAdapter extends BaseDebugAdapter {
       void Function(void) sendResponse) async {
     // TODO(dantup): implement launchRequest
     throw UnimplementedError();
-  }
-
-  @override
-  Future<void> configurationDoneRequest(ConfigurationDoneArgs args,
-      Request request, void Function(void) sendResponse) async {
-    sendResponse(null); // TODO(dantup): Why is this null needed?
   }
 }

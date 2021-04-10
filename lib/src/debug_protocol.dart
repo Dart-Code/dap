@@ -8,6 +8,42 @@ Object? specToJson(Object? obj) {
   }
 }
 
+class Capabilities extends ToJsonable {
+  final bool? supportsConfigurationDoneRequest;
+
+  Capabilities({this.supportsConfigurationDoneRequest});
+
+  @override
+  Map<String, Object?> toJson() => {
+        'supportsConfigurationDoneRequest': supportsConfigurationDoneRequest,
+      };
+
+  static Capabilities fromJson(Map<String, Object?> json) => Capabilities(
+        supportsConfigurationDoneRequest:
+            json['supportsConfigurationDoneRequest'] as bool?,
+      );
+}
+
+// class ErrorResponse extends Response<ErrorResponseBody> {
+//   ErrorResponse(int sequence, int requestSequence, String command,
+//       String? message, ErrorResponseBody body)
+//       : super.failure(sequence, requestSequence, command, message, body);
+// }
+
+// class ErrorResponseBody {
+//   Message? error;
+// }
+
+class ConfigurationDoneArgs implements ToJsonable {
+  ConfigurationDoneArgs();
+
+  @override
+  Map<String, Object?> toJson() => {};
+
+  static ConfigurationDoneArgs fromJson(Map<String, Object?> json) =>
+      ConfigurationDoneArgs();
+}
+
 class DisconnectArgs implements ToJsonable {
   final bool? restart;
   final bool? terminateDebuggee;
@@ -25,16 +61,6 @@ class DisconnectArgs implements ToJsonable {
         terminateDebuggee: json['terminateDebuggee'] as bool?,
       );
 }
-
-// class ErrorResponse extends Response<ErrorResponseBody> {
-//   ErrorResponse(int sequence, int requestSequence, String command,
-//       String? message, ErrorResponseBody body)
-//       : super.failure(sequence, requestSequence, command, message, body);
-// }
-
-// class ErrorResponseBody {
-//   Message? error;
-// }
 
 class Event extends ProtocolMessage {
   final Object? body;
@@ -64,14 +90,6 @@ abstract class EventBody implements ToJsonable {
   String get event;
 }
 
-class InitializedEventBody extends EventBody {
-  @override
-  String get event => 'initialized';
-
-  @override
-  Map<String, Object?> toJson() => {};
-}
-
 class InitializeArgs implements ToJsonable {
   InitializeArgs();
 
@@ -81,14 +99,12 @@ class InitializeArgs implements ToJsonable {
   static InitializeArgs fromJson(Map<String, Object?> json) => InitializeArgs();
 }
 
-class ConfigurationDoneArgs implements ToJsonable {
-  ConfigurationDoneArgs();
+class InitializedEventBody extends EventBody {
+  @override
+  String get event => 'initialized';
 
   @override
   Map<String, Object?> toJson() => {};
-
-  static ConfigurationDoneArgs fromJson(Map<String, Object?> json) =>
-      ConfigurationDoneArgs();
 }
 
 abstract class InitializeResponse {
@@ -207,20 +223,4 @@ class Response extends ProtocolMessage {
 
 abstract class ToJsonable {
   Object toJson();
-}
-
-class Capabilities extends ToJsonable {
-  final bool? supportsConfigurationDoneRequest;
-
-  Capabilities({this.supportsConfigurationDoneRequest});
-
-  @override
-  Map<String, Object?> toJson() => {
-        'supportsConfigurationDoneRequest': supportsConfigurationDoneRequest,
-      };
-
-  static Capabilities fromJson(Map<String, Object?> json) => Capabilities(
-        supportsConfigurationDoneRequest:
-            json['supportsConfigurationDoneRequest'] as bool?,
-      );
 }
