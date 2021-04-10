@@ -81,6 +81,16 @@ class InitializeArgs implements ToJsonable {
   static InitializeArgs fromJson(Map<String, Object?> json) => InitializeArgs();
 }
 
+class ConfigurationDoneArgs implements ToJsonable {
+  ConfigurationDoneArgs();
+
+  @override
+  Map<String, Object?> toJson() => {};
+
+  static ConfigurationDoneArgs fromJson(Map<String, Object?> json) =>
+      ConfigurationDoneArgs();
+}
+
 abstract class InitializeResponse {
   static Capabilities fromBody(Object? body) =>
       Capabilities.fromJson(body as Map<String, Object?>);

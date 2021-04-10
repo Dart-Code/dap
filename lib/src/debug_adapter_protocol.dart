@@ -14,6 +14,8 @@ abstract class DebugAdapterProtocol {
       void Function(Capabilities) sendResponse);
   Future<void> launchRequest(
       LaunchArgs args, Request request, void Function(void) sendResponse);
+  Future<void> configurationDoneRequest(ConfigurationDoneArgs args,
+      Request request, void Function(void) sendResponse);
 
   @visibleForOverriding
   Future<void> handle<TArg, TResp>(
@@ -29,6 +31,10 @@ abstract class DebugAdapterProtocol {
       handle(request, launchRequest, LaunchArgs.fromJson);
     } else if (request.command == 'disconnect') {
       handle(request, disconnectRequest, DisconnectArgs.fromJson);
+    } else if (request.command == 'configurationDone') {
+      handle(request, configurationDoneRequest, ConfigurationDoneArgs.fromJson);
+    } else {
+      throw Exception('Unknown command: ${request.command}');
     }
   }
 }

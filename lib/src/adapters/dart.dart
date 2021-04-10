@@ -29,4 +29,10 @@ class DartDebugAdapter extends BaseDebugAdapter {
     // TODO(dantup): implement launchRequest
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> configurationDoneRequest(ConfigurationDoneArgs args,
+      Request request, void Function(void) sendResponse) async {
+    sendResponse(null); // TODO(dantup): Why is this null needed?
+  }
 }
