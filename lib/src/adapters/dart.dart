@@ -14,20 +14,20 @@ class DartDebugAdapter extends CommonDebugAdapter {
   DartDebugAdapter(LspByteStreamServerChannel channel) : super(channel);
 
   @override
-  Future<void> configurationDoneRequest(ConfigurationDoneArgs args,
+  Future<void> configurationDoneRequest(ConfigurationDoneArgs? args,
       Request request, void Function(void) sendResponse) async {
     sendResponse(null); // TODO(dantup): Why is this null needed?
   }
 
   @override
-  Future<void> disconnectRequest(DisconnectArgs args, Request request,
+  Future<void> disconnectRequest(DisconnectArgs? args, Request request,
       void Function(void) sendResponse) async {
     // TODO(dantup): implement disconnectRequest
     throw UnimplementedError();
   }
 
   @override
-  Future<void> initializeRequest(InitializeArgs args, Request request,
+  Future<void> initializeRequest(InitializeArgs? args, Request request,
       void Function(Capabilities) sendResponse) async {
     sendResponse(Capabilities(supportsConfigurationDoneRequest: true));
 
@@ -37,10 +37,13 @@ class DartDebugAdapter extends CommonDebugAdapter {
 
   @override
   Future<void> launchRequest(
-    LaunchArgs args,
+    LaunchArgs? args,
     Request request,
     void Function(void) sendResponse,
   ) async {
+    if (args == null) {
+      throw Exception('launchRequest requires non-null arguments');
+    }
     final dartVmPath = path.join(args.dartSdkPath, 'bin/dart');
     final process = await Process.start(
         dartVmPath, [args.program, ...?args.args],

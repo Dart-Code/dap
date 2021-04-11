@@ -32,10 +32,12 @@ abstract class CommonDebugAdapter extends DebugAdapter {
   @override
   Future<void> handle<TArg, TResp>(
     Request request,
-    Future<void> Function(TArg, Request, void Function(TResp)) handler,
+    Future<void> Function(TArg?, Request, void Function(TResp)) handler,
     TArg Function(Map<String, Object?>) fromJson,
   ) async {
-    final args = fromJson(request.arguments as Map<String, Object?>);
+    final args = request.arguments != null
+        ? fromJson(request.arguments as Map<String, Object?>)
+        : null;
 
     // Handlers may need to send responses before they have finished executing
     // (or example, initializeRequest needs to send its response before then
