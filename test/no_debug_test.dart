@@ -29,6 +29,7 @@ void main() {
       client.sendRequest(
         'launch',
         LaunchArgs(
+          noDebug: true,
           program: 'hello_world.dart',
           cwd: await testApplicationsDirectory,
           args: ['one', 'two'],
