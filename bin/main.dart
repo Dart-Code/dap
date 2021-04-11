@@ -1,11 +1,23 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dap/src/adapters/dart.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
+import 'package:path/path.dart' as path;
 
 void main(List<String> args) {
-  // TODO(dantup): Handle picking different debug adapters for Dart/Flutter/Testing.
-  final channel = LspByteStreamServerChannel(stdin, stdout.nonBlocking);
-  final adapter = DartDebugAdapter(channel);
-  // TODO(dantup): Wait for exit?
+  runZonedGuarded(
+    () {
+      // Isolate.current.setErrorsFatal(false);
+      // TODO(dantup): Handle picking different debug adapters for Dart/Flutter/Testing.
+      final channel = LspByteStreamServerChannel(stdin, stdout.nonBlocking);
+      final adapter = DartDebugAdapter(channel);
+      // TODO(dantup): Wait for exit?
+    },
+    (e, s) {
+      final errorLogDir = Directory.systemTemp.createTempSync('dart_dap_error');
+      final errorLogFile = File(path.join(errorLogDir.path, 'error.txt'));
+      errorLogFile.writeAsStringSync('$e\n$s');
+    },
+  );
 }
