@@ -5,6 +5,7 @@ import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
+import 'codegen.dart';
 import 'json_schema.dart';
 import 'json_schema_extensions.dart';
 
@@ -23,12 +24,14 @@ Future<void> main(List<String> arguments) async {
   final schemaJson = jsonDecode(schemaContent);
   final schema = JsonSchema.fromJson(schemaJson);
 
-  writeSpecClasses(schema);
+  final buffer = IndentableStringBuffer();
+  writeSpecClasses(buffer, schema);
+  await File(generatedCodeFile).writeAsString(buffer.toString());
 }
 
 const argDownload = 'download';
-
 const argHelp = 'help';
+
 final argParser = ArgParser()
   ..addFlag(argHelp, hide: true)
   ..addFlag(argDownload,
@@ -36,8 +39,9 @@ final argParser = ArgParser()
       abbr: 'd',
       help: 'Download latest version of the DAP spec before generating types');
 
+final generatedCodeFile =
+    path.join(toolFolder, '../lib/src/debug_adapter_protocol_generated.dart');
 final licenseFile = path.join(specFolder, 'debugAdapterProtocol.license.txt');
-
 final specFile = path.join(specFolder, 'debugAdapterProtocol.json');
 final specFolder = path.join(toolFolder, 'external_dap_spec');
 final specLicenseUri = Uri.parse(
@@ -45,6 +49,7 @@ final specLicenseUri = Uri.parse(
 final specUri = Uri.parse(
     'https://raw.githubusercontent.com/microsoft/debug-adapter-protocol/gh-pages/debugAdapterProtocol.json');
 final toolFolder = path.dirname(Platform.script.toFilePath());
+
 Future<void> downloadSpec() async {
   final specResp = await http.get(specUri);
   final licenseResp = await http.get(specLicenseUri);
@@ -71,21 +76,4 @@ regenerating the code, run the same script with the "--download" argument.
 
   await File(specFile).writeAsString(specResp.body);
   await File(licenseFile).writeAsString('$licenseHeader\n${licenseResp.body}');
-}
-
-void writeSpecClasses(JsonSchema schema) {
-  for (final entry in schema.definitions.entries) {
-    final name = entry.key;
-    final type = schema.typeFor(entry.value);
-    final properties = schema.propertiesFor(type);
-
-    print(name);
-    for (final entry in properties.entries) {
-      final name = entry.key;
-      final isOptional = type.required?.contains(name) ?? true;
-      final property = entry.value;
-      final dartType = schema.dartTypeFor(property, isOptional: isOptional);
-      print('  $dartType $name');
-    }
-  }
 }
