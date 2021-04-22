@@ -5,7 +5,7 @@ import 'json_schema_extensions.dart';
 
 class CodeGenerator {
   void writeSpecClasses(IndentableStringBuffer buffer, JsonSchema schema) {
-    for (final entry in schema.definitions.entries) {
+    for (final entry in schema.definitions.entries.sortedBy((e) => e.key)) {
       final name = entry.key;
       final type = entry.value;
       final properties = schema.propertiesFor(type);
@@ -16,8 +16,9 @@ class CodeGenerator {
         ..indent();
       _writeFields(buffer, type, properties);
       buffer.writeln();
-      _writeCanParseMethod(buffer, type, properties);
       _writeFromJsonConstructor(buffer, name, type, properties);
+      buffer.writeln();
+      _writeCanParseMethod(buffer, type, properties);
       buffer
         ..outdent()
         ..writeln('}')
@@ -81,7 +82,7 @@ class CodeGenerator {
     // In order to consider this valid for parsing, all fields that must not be
     // undefined must be present and also type check for the correct type.
     // Any fields that are optional but present, must still type check.
-    for (final entry in properties.entries) {
+    for (final entry in properties.entries.sortedBy((e) => e.key)) {
       final propertyName = entry.key;
       final propertyType = entry.value;
       final isOptional = !type.requiresField(propertyName);
@@ -125,7 +126,7 @@ class CodeGenerator {
 
   void _writeFields(IndentableStringBuffer buffer, JsonType type,
       Map<String, JsonType> properties) {
-    for (final entry in properties.entries) {
+    for (final entry in properties.entries.sortedBy((e) => e.key)) {
       final propertyName = entry.key;
       final fieldName = _dartSafeName(propertyName);
       final propertyType = entry.value;
@@ -144,7 +145,7 @@ class CodeGenerator {
         ..writeln(':')
         ..indent();
       var isFirst = true;
-      for (final entry in properties.entries) {
+      for (final entry in properties.entries.sortedBy((e) => e.key)) {
         if (isFirst) {
           isFirst = false;
         } else {

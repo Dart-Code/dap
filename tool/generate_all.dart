@@ -27,7 +27,7 @@ Future<void> main(List<String> arguments) async {
   final generator = CodeGenerator();
   generator.writeSpecClasses(buffer, schema);
   await File(generatedCodeFile)
-      .writeAsString('$codeFileHeader\n\n${buffer.toString()}');
+      .writeAsString('$codeFileHeader\n${buffer.toString()}');
 }
 
 const argDownload = 'download';
