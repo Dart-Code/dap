@@ -1,5 +1,7 @@
 import 'json_schema.dart';
 
+const _dartSimpleTypes = {'bool', 'int', 'String', 'Map<String, Object?>'};
+
 String _toDartType(String type) {
   if (type.startsWith('#/definitions/')) {
     return type.replaceAll('#/definitions/', '');
@@ -29,7 +31,7 @@ String _toDartUnionType(List<String> types) {
     'string'
   };
   if (types.length == 7 && allLiteralTypes.containsAll(types)) {
-    return 'Object?';
+    return 'Object';
   }
   return 'Either${types.length}<${types.map(_toDartType).join(', ')}>';
 }
@@ -44,19 +46,28 @@ extension JsonSchemaExtensions on JsonSchema {
         for (final other in type.allOf ?? []) ...propertiesFor(typeFor(other)),
         ...?type.properties,
       };
+}
 
-  String dartTypeFor(JsonType type, {bool isOptional = false}) {
-    final dollarRef = type.dollarRef;
-    final oneOf = type.oneOf;
-
+extension JsonTypeExtensions on JsonType {
+  String asDartType({bool isOptional = false}) {
     final dartType = dollarRef != null
-        ? _toDartType(dollarRef)
+        ? _toDartType(dollarRef!)
         : oneOf != null
-            ? _toDartUnionType(oneOf.map(dartTypeFor).toList())
-            : type.type!.valueEquals('array')
-                ? 'List<${dartTypeFor(type.items!)}>'
-                : type.type!.map(_toDartType, _toDartUnionType);
+            ? _toDartUnionType(oneOf!.map((item) => item.asDartType()).toList())
+            : type!.valueEquals('array')
+                ? 'List<${items!.asDartType()}>'
+                : type!.map(_toDartType, _toDartUnionType);
 
     return isOptional ? '$dartType?' : dartType;
   }
+
+  bool get isAny => asDartType() == 'Object';
+  bool get isList => type?.valueEquals('array') ?? false;
+  bool get isSimple => _dartSimpleTypes.contains(asDartType());
+  bool get isUnion =>
+      oneOf != null || type != null && type!.map((_) => false, (_) => true);
+  bool get isSpecType => dollarRef != null;
+
+  bool requiresField(String propertyName) =>
+      required?.contains(propertyName) ?? false;
 }

@@ -7,7 +7,6 @@ import 'package:path/path.dart' as path;
 
 import 'codegen.dart';
 import 'json_schema.dart';
-import 'json_schema_extensions.dart';
 
 Future<void> main(List<String> arguments) async {
   final args = argParser.parse(arguments);
@@ -25,20 +24,23 @@ Future<void> main(List<String> arguments) async {
   final schema = JsonSchema.fromJson(schemaJson);
 
   final buffer = IndentableStringBuffer();
-  writeSpecClasses(buffer, schema);
-  await File(generatedCodeFile).writeAsString(buffer.toString());
+  final generator = CodeGenerator();
+  generator.writeSpecClasses(buffer, schema);
+  await File(generatedCodeFile)
+      .writeAsString('$codeFileHeader\n\n${buffer.toString()}');
 }
 
 const argDownload = 'download';
 const argHelp = 'help';
-
+const codeFileHeader = '''
+import 'package:dap/src/temp_borrowed_from_analysis_server/protocol_special.dart';
+''';
 final argParser = ArgParser()
   ..addFlag(argHelp, hide: true)
   ..addFlag(argDownload,
       negatable: false,
       abbr: 'd',
       help: 'Download latest version of the DAP spec before generating types');
-
 final generatedCodeFile =
     path.join(toolFolder, '../lib/src/debug_adapter_protocol_generated.dart');
 final licenseFile = path.join(specFolder, 'debugAdapterProtocol.license.txt');
