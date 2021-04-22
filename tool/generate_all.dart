@@ -26,22 +26,9 @@ Future<void> main(List<String> arguments) async {
   writeSpecClasses(schema);
 }
 
-void writeSpecClasses(JsonSchema schema) {
-  for (final entry in schema.definitions.entries) {
-    final name = entry.key;
-    final type = schema.typeFor(entry.value);
-    final properties = schema.propertiesFor(type);
-
-    print(name);
-    for (final property in properties.entries) {
-      print('  ${property.key}');
-    }
-  }
-}
-
 const argDownload = 'download';
-const argHelp = 'help';
 
+const argHelp = 'help';
 final argParser = ArgParser()
   ..addFlag(argHelp, hide: true)
   ..addFlag(argDownload,
@@ -50,6 +37,7 @@ final argParser = ArgParser()
       help: 'Download latest version of the DAP spec before generating types');
 
 final licenseFile = path.join(specFolder, 'debugAdapterProtocol.license.txt');
+
 final specFile = path.join(specFolder, 'debugAdapterProtocol.json');
 final specFolder = path.join(toolFolder, 'external_dap_spec');
 final specLicenseUri = Uri.parse(
@@ -57,7 +45,6 @@ final specLicenseUri = Uri.parse(
 final specUri = Uri.parse(
     'https://raw.githubusercontent.com/microsoft/debug-adapter-protocol/gh-pages/debugAdapterProtocol.json');
 final toolFolder = path.dirname(Platform.script.toFilePath());
-
 Future<void> downloadSpec() async {
   final specResp = await http.get(specUri);
   final licenseResp = await http.get(specLicenseUri);
@@ -84,4 +71,21 @@ regenerating the code, run the same script with the "--download" argument.
 
   await File(specFile).writeAsString(specResp.body);
   await File(licenseFile).writeAsString('$licenseHeader\n${licenseResp.body}');
+}
+
+void writeSpecClasses(JsonSchema schema) {
+  for (final entry in schema.definitions.entries) {
+    final name = entry.key;
+    final type = schema.typeFor(entry.value);
+    final properties = schema.propertiesFor(type);
+
+    print(name);
+    for (final entry in properties.entries) {
+      final name = entry.key;
+      final isOptional = type.required?.contains(name) ?? true;
+      final property = entry.value;
+      final dartType = schema.dartTypeFor(property, isOptional: isOptional);
+      print('  $dartType $name');
+    }
+  }
 }
