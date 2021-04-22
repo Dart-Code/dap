@@ -25,6 +25,23 @@
 			"env": {
 				"DAP_EXTERNAL": true,
 			}
+		},
+		{
+			"name": "Download + Generate All",
+			"request": "launch",
+			"type": "dart",
+			"program": "tool/generate_all.dart",
+			"codeLens": {
+				"for": [
+					"run-file",
+					"debug-file",
+				],
+				"path": "tool",
+				"title": "${debugType} (w/ Download)"
+			},
+			"args": [
+				"-d",
+			]
 		}
 	]
 }

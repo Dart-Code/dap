@@ -11,6 +11,7 @@ executables:
   dap: main
 
 dependencies:
+  http:
   meta:
   pedantic: ^1.11.0
 
