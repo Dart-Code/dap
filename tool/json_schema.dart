@@ -18,11 +18,24 @@ class JsonType {
   final List<JsonType>? oneOf;
   final String? description;
   final String? dollarRef;
+  final List<String>? enumValues;
   final JsonType? items;
   final Map<String, JsonType>? properties;
   final List<String>? required;
   final String? title;
   final Either2<String, List<String>>? type;
+
+  JsonType.empty(this.root)
+      : allOf = null,
+        oneOf = null,
+        description = null,
+        dollarRef = null,
+        enumValues = null,
+        items = null,
+        properties = null,
+        required = null,
+        title = null,
+        type = null;
 
   JsonType.fromJson(this.root, Map<String, Object?> json)
       : allOf = json['allOf'] == null
@@ -33,6 +46,7 @@ class JsonType {
                 .toList(),
         description = json['description'] as String?,
         dollarRef = json[r'$ref'] as String?,
+        enumValues = (json['enum'] as List<Object?>?)?.cast<String>(),
         items = json['items'] == null
             ? null
             : JsonType.fromJson(root, json['items'] as Map<String, Object?>),
@@ -47,9 +61,7 @@ class JsonType {
             : (json['properties'] as Map<String, Object?>).map((key, value) =>
                 MapEntry(key,
                     JsonType.fromJson(root, value as Map<String, Object?>))),
-        required = json['required'] == null
-            ? null
-            : (json['required'] as List<Object?>).cast<String>(),
+        required = (json['required'] as List<Object?>?)?.cast<String>(),
         title = json['title'] as String?,
         type = json['type'] == null
             ? null

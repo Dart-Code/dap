@@ -1,4 +1,5 @@
 import 'json_schema.dart';
+import 'package:collection/collection.dart';
 
 const _dartSimpleTypes = {
   'bool',
@@ -57,19 +58,13 @@ extension JsonSchemaExtensions on JsonSchema {
       {bool includeBase = true}) {
     // Merge this types direct properties with anything from the included
     // (allOf) types, but excluding those that come from the base class.
+    final baseType = type.baseType;
+    final includedBaseTypes =
+        (type.allOf ?? []).where((t) => includeBase || t != baseType);
     final properties = {
+      for (final other in includedBaseTypes) ...propertiesFor(typeFor(other)),
       ...?type.properties,
-      for (final other in type.allOf ?? []) ...propertiesFor(typeFor(other))
     };
-
-    // Remove any types that are defined in the base.
-    if (!includeBase) {
-      final baseType = type.baseType;
-      final basePropertyNames = baseType != null
-          ? propertiesFor(typeFor(baseType)).keys.toSet()
-          : <String>{};
-      properties.removeWhere((name, type) => basePropertyNames.contains(name));
-    }
 
     return properties;
   }
@@ -108,6 +103,8 @@ extension JsonTypeExtensions on JsonType {
   }
 
   String get refName => dollarRef!.replaceAll('#/definitions/', '');
+
+  String? get literalValue => enumValues?.singleOrNull;
 
   JsonType? get baseType {
     final all = allOf;
