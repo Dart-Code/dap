@@ -403,12 +403,15 @@ class CodeGenerator {
     final opBang = invert ? '!' : '';
     final opTrue = invert ? 'false' : 'true';
     final opIs = invert ? 'is!' : 'is';
+    final opEquals = invert ? '!=' : '==';
     final opAnd = invert ? '||' : '&&';
     final opOr = invert ? '&&' : '||';
     final opEvery = invert ? 'any' : 'every';
 
     if (type.isAny) {
       buffer.write(opTrue);
+    } else if (dartType == 'Null') {
+      buffer.write('$valueCode $opEquals null');
     } else if (type.isSimple) {
       buffer.write('$valueCode $opIs $dartType');
     } else if (type.isList) {
