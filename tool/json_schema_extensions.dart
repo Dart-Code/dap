@@ -1,6 +1,13 @@
 import 'json_schema.dart';
 
-const _dartSimpleTypes = {'bool', 'int', 'String', 'Map<String, Object?>'};
+const _dartSimpleTypes = {
+  'bool',
+  'int',
+  'num',
+  'String',
+  'Map<String, Object?>',
+  'Null',
+};
 
 String _toDartType(String type) {
   if (type.startsWith('#/definitions/')) {
@@ -11,10 +18,14 @@ String _toDartType(String type) {
       return 'Map<String, Object?>';
     case 'integer':
       return 'int';
+    case 'number':
+      return 'num';
     case 'string':
       return 'String';
     case 'boolean':
       return 'bool';
+    case 'null':
+      return 'Null';
     default:
       return type;
   }

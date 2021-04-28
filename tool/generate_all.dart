@@ -25,7 +25,9 @@ Future<void> main(List<String> arguments) async {
 
   final buffer = IndentableStringBuffer();
   final generator = CodeGenerator();
-  generator.writeSpecClasses(buffer, schema);
+  generator.writeDefinitionClasses(buffer, schema);
+  buffer.writeln();
+  generator.writeBodyClasses(buffer, schema);
   await File(generatedCodeFile)
       .writeAsString('$codeFileHeader\n${buffer.toString()}');
 }
