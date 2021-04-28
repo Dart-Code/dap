@@ -42,7 +42,8 @@ extension JsonSchemaExtensions on JsonSchema {
       ? definitions[type.refName]!
       : type;
 
-  Map<String, JsonType> propertiesFor(JsonType type) {
+  Map<String, JsonType> propertiesFor(JsonType type,
+      {bool includeBase = true}) {
     // Merge this types direct properties with anything from the included
     // (allOf) types, but excluding those that come from the base class.
     final properties = {
@@ -51,11 +52,13 @@ extension JsonSchemaExtensions on JsonSchema {
     };
 
     // Remove any types that are defined in the base.
-    final baseType = type.baseType;
-    final basePropertyNames = baseType != null
-        ? propertiesFor(typeFor(baseType)).keys.toSet()
-        : <String>{};
-    properties.removeWhere((name, type) => basePropertyNames.contains(name));
+    if (!includeBase) {
+      final baseType = type.baseType;
+      final basePropertyNames = baseType != null
+          ? propertiesFor(typeFor(baseType)).keys.toSet()
+          : <String>{};
+      properties.removeWhere((name, type) => basePropertyNames.contains(name));
+    }
 
     return properties;
   }
@@ -81,8 +84,17 @@ extension JsonTypeExtensions on JsonType {
       oneOf != null || type != null && type!.map((_) => false, (_) => true);
   bool get isSpecType => dollarRef != null;
 
-  bool requiresField(String propertyName) =>
-      required?.contains(propertyName) ?? false;
+  bool requiresField(String propertyName) {
+    if (required?.contains(propertyName) ?? false) {
+      return true;
+    }
+    final base = baseType;
+    if (base != null && root.typeFor(base).requiresField(propertyName)) {
+      return true;
+    }
+
+    return false;
+  }
 
   String get refName => dollarRef!.replaceAll('#/definitions/', '');
 
@@ -92,5 +104,17 @@ extension JsonTypeExtensions on JsonType {
       return all.first;
     }
     return null;
+  }
+
+  List<JsonType> get unionTypes {
+    final types = oneOf ??
+        // Fabricate a union for types where "type" is an array of literal types:
+        // ['a', 'b']
+        type!.map(
+          (_) => throw 'unexpected non-union in isUnion condition',
+          (types) =>
+              types.map((t) => JsonType.fromJson(root, {'type': t})).toList(),
+        )!;
+    return types;
   }
 }

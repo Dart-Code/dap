@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:collection/collection.dart';
 
 import 'json_schema.dart';
@@ -8,8 +10,13 @@ class CodeGenerator {
     for (final entry in schema.definitions.entries.sortedBy((e) => e.key)) {
       final name = entry.key;
       final type = entry.value;
-      final properties = schema.propertiesFor(type);
       final baseType = type.baseType;
+      final resolvedBaseType =
+          baseType != null ? schema.typeFor(baseType) : null;
+      final classProperties = schema.propertiesFor(type, includeBase: false);
+      final baseProperties = resolvedBaseType != null
+          ? schema.propertiesFor(resolvedBaseType)
+          : <String, JsonType>{};
 
       _writeTypeDescription(buffer, type);
       buffer.write('class $name ');
@@ -19,12 +26,18 @@ class CodeGenerator {
       buffer
         ..writeln('{')
         ..indent();
-      _writeFields(buffer, type, properties);
+      _writeFields(buffer, type, classProperties);
       buffer.writeln();
-      _writeFromJsonConstructor(buffer, name, type, properties,
-          callSuper: baseType != null);
+      _writeFromJsonStaticMethod(buffer, name);
       buffer.writeln();
-      _writeCanParseMethod(buffer, type, properties);
+      _writeConstructor(buffer, name, type, classProperties, baseProperties,
+          baseType: resolvedBaseType);
+      buffer.writeln();
+      _writeFromMapConstructor(buffer, name, type, classProperties,
+          callSuper: resolvedBaseType != null);
+      buffer.writeln();
+      _writeCanParseMethod(buffer, type, classProperties,
+          baseTypeRefName: baseType?.refName);
       buffer
         ..outdent()
         ..writeln('}')
@@ -39,18 +52,11 @@ class CodeGenerator {
     return improvedName[name] ??
         // Some types are prefixed with _ in the spec but that will make them
         // private in Dart and inaccessible to the adapter so we strip it off.
-        name.replaceAll(r'_', '');
-  }
-
-  List<JsonType> _getUnionTypes(JsonType type) {
-    final types = type.oneOf ??
-        // Fabricate a union for types where "type" is an array of literal types:
-        // ['a', 'b']
-        type.type!.map(
-          (_) => throw 'unexpected non-union in isUnion condition',
-          (types) => types.map((t) => JsonType.fromJson({'type': t})).toList(),
-        )!;
-    return types;
+        name
+            .replaceAll(RegExp(r'^_+'), '')
+            // Also replace any other scores to make camelCase
+            .replaceAllMapped(
+                RegExp(r'_(.)'), (m) => m.group(1)!.toUpperCase());
   }
 
   Iterable<String> _wrapLines(List<String> lines, int maxLength) sync* {
@@ -61,7 +67,7 @@ class CodeGenerator {
           yield line;
           break;
         } else {
-          var lastSpace = line.lastIndexOf(' ', maxLength);
+          var lastSpace = line.lastIndexOf(' ', max(maxLength, 0));
           // If there was no valid place to wrap, yield the whole string.
           if (lastSpace == -1) {
             yield line;
@@ -75,8 +81,12 @@ class CodeGenerator {
     }
   }
 
-  void _writeCanParseMethod(IndentableStringBuffer buffer, JsonType type,
-      Map<String, JsonType> properties) {
+  void _writeCanParseMethod(
+    IndentableStringBuffer buffer,
+    JsonType type,
+    Map<String, JsonType> properties, {
+    required String? baseTypeRefName,
+  }) {
     buffer
       ..writeIndentedln('static bool canParse(Object? obj) {')
       ..indent()
@@ -116,7 +126,11 @@ class CodeGenerator {
         ..writeIndentedln('}');
     }
     buffer
-      ..writeIndentedln('return true;')
+      ..writeIndentedln(
+        baseTypeRefName != null
+            ? 'return $baseTypeRefName.canParse(obj);'
+            : 'return true;',
+      )
       ..outdent()
       ..writeIndentedln('}');
   }
@@ -143,14 +157,129 @@ class CodeGenerator {
     }
   }
 
-  void _writeFromJsonConstructor(
+  void _writeFromJsonExpression(
+      IndentableStringBuffer buffer, JsonType type, String valueCode,
+      {bool isOptional = false}) {
+    final dartType = type.asDartType(isOptional: isOptional);
+    final dartTypeNotNullable = type.asDartType();
+    final nullOp = isOptional ? '?' : '';
+
+    if (type.isAny || type.isSimple) {
+      buffer.write('$valueCode');
+      if (dartType != 'Object?') {
+        buffer.write(' as $dartType');
+      }
+    } else if (type.isList) {
+      buffer.write('($valueCode as List$nullOp)$nullOp.map((item) => ');
+      _writeFromJsonExpression(buffer, type.items!, 'item');
+      buffer.write(').toList()');
+    } else if (type.isUnion) {
+      final types = type.unionTypes;
+
+      // Write a check against each type, eg.:
+      // x is y ? new Either.tx(x) : (...)
+      for (var i = 0; i < types.length; i++) {
+        final isLast = i == types.length - 1;
+
+        // For the last item, we won't wrap if in a check, as the constructor
+        // will only be called if canParse() returned true, so it's the only
+        // remaining option.
+        if (!isLast) {
+          _writeTypeCheckCondition(buffer, types[i], valueCode,
+              isOptional: false);
+          buffer.write(' ? ');
+        }
+        buffer.write('$dartTypeNotNullable.t${i + 1}(');
+        _writeFromJsonExpression(buffer, types[i], valueCode);
+        buffer.write(')');
+
+        if (!isLast) {
+          buffer.write(' : ');
+        }
+      }
+    } else if (type.isSpecType) {
+      buffer.write(
+          '$dartTypeNotNullable.fromJson($valueCode as Map<String, Object?>)');
+    } else {
+      throw 'Unable to type check $valueCode against $type';
+    }
+  }
+
+  void _writeFromJsonStaticMethod(
+    IndentableStringBuffer buffer,
+    String name,
+  ) =>
+      buffer.writeIndentedln(
+          'static $name fromJson(Map<String, Object?> obj) => $name.fromMap(obj);');
+
+  void _writeConstructor(
+    IndentableStringBuffer buffer,
+    String name,
+    JsonType type,
+    Map<String, JsonType> classProperties,
+    Map<String, JsonType> baseProperties, {
+    required JsonType? baseType,
+  }) {
+    buffer.writeIndented('$name(');
+    if (classProperties.isNotEmpty || baseProperties.isNotEmpty) {
+      buffer
+        ..writeln('{')
+        ..indent();
+      for (final entry in classProperties.entries.sortedBy((e) => e.key)) {
+        final propertyName = entry.key;
+        final fieldName = _dartSafeName(propertyName);
+        final isOptional = !type.requiresField(propertyName);
+        buffer.writeIndented('');
+        if (!isOptional) {
+          buffer.write('required ');
+        }
+        buffer.writeln('this.$fieldName, ');
+      }
+      for (final entry in baseProperties.entries.sortedBy((e) => e.key)) {
+        final propertyName = entry.key;
+        final fieldName = _dartSafeName(propertyName);
+        final propertyType = entry.value;
+        final isOptional = !type.requiresField(propertyName);
+        final dartType = propertyType.asDartType(isOptional: isOptional);
+        buffer.writeIndented('');
+        if (!isOptional) {
+          buffer.write('required ');
+        }
+        buffer.writeln('$dartType $fieldName, ');
+      }
+      buffer
+        ..outdent()
+        ..writeIndented('}');
+    }
+    buffer.write(')');
+
+    if (baseType != null) {
+      buffer.write(': super(');
+      if (baseProperties.isNotEmpty) {
+        buffer
+          ..writeln()
+          ..indent();
+        for (final propertyName in baseProperties.keys) {
+          final fieldName = _dartSafeName(propertyName);
+          buffer.writeIndentedln('$fieldName: $fieldName, ');
+        }
+        buffer
+          ..outdent()
+          ..writeIndented('');
+      }
+      buffer.write(')');
+    }
+    buffer.writeln(';');
+  }
+
+  void _writeFromMapConstructor(
     IndentableStringBuffer buffer,
     String name,
     JsonType type,
     Map<String, JsonType> properties, {
     bool callSuper = false,
   }) {
-    buffer.writeIndented('$name.fromJson(Map<String, Object?> obj)');
+    buffer.writeIndented('$name.fromMap(Map<String, Object?> obj)');
     if (properties.isNotEmpty || callSuper) {
       buffer
         ..writeln(':')
@@ -169,61 +298,18 @@ class CodeGenerator {
         final isOptional = !type.requiresField(propertyName);
 
         buffer.writeIndented('$fieldName = ');
-        if (isOptional) {
-          buffer.write("!obj.containsKey('$propertyName') ? null : ");
-        }
-        _writeFromJsonExpression(buffer, propertyType, "obj['$propertyName']");
+        _writeFromJsonExpression(buffer, propertyType, "obj['$propertyName']",
+            isOptional: isOptional);
       }
       if (callSuper) {
         if (!isFirst) {
           buffer.writeln(',');
         }
-        buffer.writeIndented('super.fromJson(obj)');
+        buffer.writeIndented('super.fromMap(obj)');
       }
       buffer.outdent();
     }
     buffer.writeln(';');
-  }
-
-  void _writeFromJsonExpression(
-      IndentableStringBuffer buffer, JsonType type, String valueCode) {
-    final dartType = type.asDartType();
-
-    if (type.isAny || type.isSimple) {
-      buffer.write('$valueCode as $dartType');
-    } else if (type.isList) {
-      buffer.write('($valueCode as List).map((item) => ');
-      _writeFromJsonExpression(buffer, type.items!, 'item');
-      buffer.write(').toList()');
-    } else if (type.isUnion) {
-      final types = _getUnionTypes(type);
-      // Write a check against each type, eg.:
-      // x is y ? new Either.tx(x) : (...)
-      for (var i = 0; i < types.length; i++) {
-        final isLast = i == types.length - 1;
-
-        // For the last item, we won't wrap if in a check, as the constructor
-        // will only be called if canParse() returned true, so it's the only
-        // remaining option.
-        if (!isLast) {
-          _writeTypeCheckCondition(buffer, types[i], valueCode,
-              isOptional: false);
-          buffer.write(' ? ');
-        }
-
-        buffer.write('$dartType.t${i + 1}(');
-        _writeFromJsonExpression(buffer, types[i], valueCode);
-        buffer.write(')');
-
-        if (!isLast) {
-          buffer.write(' : ');
-        }
-      }
-    } else if (type.isSpecType) {
-      buffer.write('$dartType.fromJson($valueCode as Map<String, Object?>)');
-    } else {
-      throw 'Unable to type check $valueCode against $type';
-    }
   }
 
   void _writeTypeCheckCondition(
@@ -251,7 +337,7 @@ class CodeGenerator {
       buffer.write('))');
       buffer.write(')');
     } else if (type.isUnion) {
-      final types = _getUnionTypes(type);
+      final types = type.unionTypes;
       // To type check a union, we just recursively check against each of its types.
       buffer.write('(');
       for (var i = 0; i < types.length; i++) {

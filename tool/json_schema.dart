@@ -1,18 +1,19 @@
 import 'package:dap/src/temp_borrowed_from_analysis_server/protocol_special.dart';
 
-class JsonSchema extends JsonType {
-  final Uri dollarSchema;
-  final Map<String, JsonType> definitions;
+class JsonSchema {
+  late final Uri dollarSchema;
+  late final Map<String, JsonType> definitions;
 
-  JsonSchema.fromJson(Map<String, Object?> json)
-      : dollarSchema = Uri.parse(json[r'$schema'] as String),
-        definitions = (json['definitions'] as Map<String, Object?>).map((key,
-                value) =>
-            MapEntry(key, JsonType.fromJson(value as Map<String, Object?>))),
-        super.fromJson(json);
+  JsonSchema.fromJson(Map<String, Object?> json) {
+    dollarSchema = Uri.parse(json[r'$schema'] as String);
+    definitions = (json['definitions'] as Map<String, Object?>).map((key,
+            value) =>
+        MapEntry(key, JsonType.fromJson(this, value as Map<String, Object?>)));
+  }
 }
 
 class JsonType {
+  final JsonSchema root;
   final List<JsonType>? allOf;
   final List<JsonType>? oneOf;
   final String? description;
@@ -23,29 +24,29 @@ class JsonType {
   final String? title;
   final Either2<String, List<String>>? type;
 
-  JsonType.fromJson(Map<String, Object?> json)
+  JsonType.fromJson(this.root, Map<String, Object?> json)
       : allOf = json['allOf'] == null
             ? null
             : (json['allOf'] as List<Object?>)
                 .cast<Map<String, Object?>>()
-                .map((item) => JsonType.fromJson(item))
+                .map((item) => JsonType.fromJson(root, item))
                 .toList(),
         description = json['description'] as String?,
         dollarRef = json[r'$ref'] as String?,
         items = json['items'] == null
             ? null
-            : JsonType.fromJson(json['items'] as Map<String, Object?>),
+            : JsonType.fromJson(root, json['items'] as Map<String, Object?>),
         oneOf = json['oneOf'] == null
             ? null
             : (json['oneOf'] as List<Object?>)
                 .cast<Map<String, Object?>>()
-                .map((item) => JsonType.fromJson(item))
+                .map((item) => JsonType.fromJson(root, item))
                 .toList(),
         properties = json['properties'] == null
             ? null
             : (json['properties'] as Map<String, Object?>).map((key, value) =>
-                MapEntry(
-                    key, JsonType.fromJson(value as Map<String, Object?>))),
+                MapEntry(key,
+                    JsonType.fromJson(root, value as Map<String, Object?>))),
         required = json['required'] == null
             ? null
             : (json['required'] as List<Object?>).cast<String>(),
