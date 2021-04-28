@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:dap/src/debug_adapter_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 
 /// A helper class to simplify interacting with the DapTestServer.
@@ -13,7 +13,7 @@ class DapTestClient {
   DapTestClient(this._client) {
     _client.listen((message) {
       if (message is Response) {
-        final completer = _requestCompleters.remove(message.requestSequence);
+        final completer = _requestCompleters.remove(message.requestSeq);
         completer?.complete(message);
       } else if (message is Event) {
         _eventController.add(message);
@@ -37,9 +37,10 @@ class DapTestClient {
       _eventController.stream.where((e) => e.event == event);
 
   Future<Response> sendRequest(String command, Object? arguments) {
-    final request = Request(_seq++, command, arguments);
+    final request =
+        Request(seq: _seq++, command: command, arguments: arguments);
     final completer = Completer<Response>();
-    _requestCompleters[request.sequence] = completer;
+    _requestCompleters[request.seq] = completer;
     _client.sendRequest(request);
     return completer.future;
   }

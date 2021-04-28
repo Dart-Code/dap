@@ -1,4 +1,4 @@
-import 'package:dap/src/debug_adapter_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:meta/meta.dart';
 
 // TODO(dantup): This file should be generated from the DAP spec.
@@ -8,11 +8,11 @@ void handleRequest(DebugAdapter dap, Request request) {
 }
 
 abstract class DebugAdapter {
-  Future<void> configurationDoneRequest(ConfigurationDoneArgs? args,
+  Future<void> configurationDoneRequest(ConfigurationDoneArguments? args,
       Request request, void Function(void) sendResponse);
 
-  Future<void> disconnectRequest(
-      DisconnectArgs? args, Request request, void Function(void) sendResponse);
+  Future<void> disconnectRequest(DisconnectArguments? args, Request request,
+      void Function(void) sendResponse);
 
   @visibleForOverriding
   Future<void> handle<TArg, TResp>(
@@ -21,21 +21,22 @@ abstract class DebugAdapter {
     TArg Function(Map<String, Object?>) fromJson,
   );
 
-  Future<void> initializeRequest(InitializeArgs? args, Request request,
-      void Function(Capabilities) sendResponse);
+  Future<void> initializeRequest(InitializeRequestArguments? args,
+      Request request, void Function(Capabilities) sendResponse);
 
-  Future<void> launchRequest(
-      LaunchArgs? args, Request request, void Function(void) sendResponse);
+  Future<void> launchRequest(LaunchRequestArguments? args, Request request,
+      void Function(void) sendResponse);
 
   void _handleRequest(Request request) {
     if (request.command == 'initialize') {
-      handle(request, initializeRequest, InitializeArgs.fromJson);
+      handle(request, initializeRequest, InitializeRequestArguments.fromJson);
     } else if (request.command == 'launch') {
-      handle(request, launchRequest, LaunchArgs.fromJson);
+      handle(request, launchRequest, LaunchRequestArguments.fromJson);
     } else if (request.command == 'disconnect') {
-      handle(request, disconnectRequest, DisconnectArgs.fromJson);
+      handle(request, disconnectRequest, DisconnectArguments.fromJson);
     } else if (request.command == 'configurationDone') {
-      handle(request, configurationDoneRequest, ConfigurationDoneArgs.fromJson);
+      handle(request, configurationDoneRequest,
+          ConfigurationDoneArguments.fromJson);
     } else {
       throw Exception('Unknown command: ${request.command}');
     }

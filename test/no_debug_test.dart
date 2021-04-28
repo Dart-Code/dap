@@ -1,8 +1,5 @@
-import 'dart:io';
-
-import 'package:dap/src/debug_adapter_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:test/test.dart';
-import 'package:path/path.dart' as path;
 
 import 'server.dart';
 import 'test_utils.dart';
@@ -19,16 +16,17 @@ void main() {
     // Initialize.
     await Future.wait([
       client.event('initialized'),
-      client.sendRequest('initialize', InitializeArgs()),
+      client.sendRequest(
+          'initialize', InitializeRequestArguments(adapterID: 'test')),
     ]);
-    await client.sendRequest('configurationDone', ConfigurationDoneArgs());
+    await client.sendRequest('configurationDone', ConfigurationDoneArguments());
 
     // Launch script and wait for termination.
     await Future.wait([
       client.event('terminated'),
       client.sendRequest(
         'launch',
-        LaunchArgs(
+        LaunchRequestArguments(
           noDebug: true,
           program: 'hello_world.dart',
           cwd: await testApplicationsDirectory,

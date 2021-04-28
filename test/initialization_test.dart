@@ -1,18 +1,19 @@
-import 'package:dap/src/debug_adapter_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:test/test.dart';
 
 import 'server.dart';
 
 void main() {
+  final initArgs = InitializeRequestArguments(adapterID: 'test');
   test('Server responds to initializeRequest', () async {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
 
-    final response = await client.sendRequest('initialize', InitializeArgs());
+    final response = await client.sendRequest('initialize', initArgs);
 
     expect(response.success, isTrue);
     expect(response.command, equals('initialize'));
-    final result = InitializeResponse.fromBody(response.body);
+    final result = Capabilities.fromJson(response.body as Map<String, Object>);
 
     // TODO(dantup): Test for actual desired value
     expect(result.supportsConfigurationDoneRequest, isTrue);
@@ -22,7 +23,7 @@ void main() {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
 
-    final response = await client.sendRequest('notValid', InitializeArgs());
+    final response = await client.sendRequest('notValid', initArgs);
     expect(response.success, isFalse);
     expect(response.command, equals('notValid'));
     expect(response.message, contains('Unknown command: notValid'));
@@ -38,7 +39,7 @@ void main() {
     final messages = <ProtocolMessage>[];
     await Future.wait([
       client.event('initialized').then(messages.add),
-      client.sendRequest('initialize', InitializeArgs()).then(messages.add),
+      client.sendRequest('initialize', initArgs).then(messages.add),
     ]);
 
     expect(messages[0], TypeMatcher<Response>());
@@ -51,11 +52,11 @@ void main() {
 
     await Future.wait([
       client.event('initialized'),
-      client.sendRequest('initialize', InitializeArgs()),
+      client.sendRequest('initialize', initArgs),
     ]);
 
-    final response =
-        await client.sendRequest('configurationDone', ConfigurationDoneArgs());
+    final response = await client.sendRequest(
+        'configurationDone', ConfigurationDoneArguments());
     expect(response.success, isTrue);
   });
 }

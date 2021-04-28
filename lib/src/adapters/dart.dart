@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 import 'package:dap/src/debug_adapter_common.dart';
-import 'package:dap/src/debug_adapter_protocol.dart';
+import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:pedantic/pedantic.dart';
 
@@ -14,21 +14,21 @@ class DartDebugAdapter extends CommonDebugAdapter {
   DartDebugAdapter(LspByteStreamServerChannel channel) : super(channel);
 
   @override
-  Future<void> configurationDoneRequest(ConfigurationDoneArgs? args,
+  Future<void> configurationDoneRequest(ConfigurationDoneArguments? args,
       Request request, void Function(void) sendResponse) async {
     sendResponse(null); // TODO(dantup): Why is this null needed?
   }
 
   @override
-  Future<void> disconnectRequest(DisconnectArgs? args, Request request,
+  Future<void> disconnectRequest(DisconnectArguments? args, Request request,
       void Function(void) sendResponse) async {
     // TODO(dantup): implement disconnectRequest
     throw UnimplementedError();
   }
 
   @override
-  Future<void> initializeRequest(InitializeArgs? args, Request request,
-      void Function(Capabilities) sendResponse) async {
+  Future<void> initializeRequest(InitializeRequestArguments? args,
+      Request request, void Function(Capabilities) sendResponse) async {
     sendResponse(Capabilities(supportsConfigurationDoneRequest: true));
 
     // This must only be sent AFTER the response.
@@ -37,7 +37,7 @@ class DartDebugAdapter extends CommonDebugAdapter {
 
   @override
   Future<void> launchRequest(
-    LaunchArgs? args,
+    LaunchRequestArguments? args,
     Request request,
     void Function(void) sendResponse,
   ) async {
