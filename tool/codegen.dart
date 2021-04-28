@@ -13,20 +13,68 @@ class CodeGenerator {
       final baseType = type.baseType;
 
       if (baseType?.refName == 'Response' || baseType?.refName == 'Event') {
-        final classProperties = schema.propertiesFor(type, includeBase: true);
+        final baseClass = baseType?.refName == 'Response'
+            ? JsonType.named(schema, 'ResponseBody')
+            : JsonType.named(schema, 'EventBody');
+        final classProperties = schema.propertiesFor(type);
         final bodyProperty = classProperties['body'];
-        final bodyPropertyProperties = bodyProperty?.properties;
+        var bodyPropertyProperties = bodyProperty?.properties;
+
         _writeClass(
           buffer,
           bodyProperty ?? JsonType.empty(schema),
           '${name}Body',
           bodyPropertyProperties ?? {},
           {},
-          null,
+          baseClass,
           null,
         );
       }
     }
+  }
+
+  void writeEventTypeLookup(IndentableStringBuffer buffer, JsonSchema schema) {
+    buffer
+      ..writeln('const eventTypes = {')
+      ..indent();
+    for (final entry in schema.definitions.entries.sortedBy((e) => e.key)) {
+      final name = entry.key;
+      final type = entry.value;
+      final baseType = type.baseType;
+
+      if (baseType?.refName == 'Event') {
+        final classProperties = schema.propertiesFor(type);
+        final eventType = classProperties['event']!.literalValue;
+        buffer.writeIndentedln("${name}Body: '$eventType',");
+      }
+    }
+    buffer
+      ..writeln('};')
+      ..outdent();
+  }
+
+  void writeCommandArgumentTypeLookup(
+      IndentableStringBuffer buffer, JsonSchema schema) {
+    buffer
+      ..writeln('const commandTypes = {')
+      ..indent();
+    for (final entry in schema.definitions.entries.sortedBy((e) => e.key)) {
+      final type = entry.value;
+      final baseType = type.baseType;
+
+      if (baseType?.refName == 'Request') {
+        final classProperties = schema.propertiesFor(type);
+        final argumentsProperty = classProperties['arguments'];
+        final commandType = classProperties['command']?.literalValue;
+        if (argumentsProperty?.dollarRef != null && commandType != null) {
+          buffer.writeIndentedln(
+              "${argumentsProperty!.refName}: '$commandType',");
+        }
+      }
+    }
+    buffer
+      ..writeln('};')
+      ..outdent();
   }
 
   void writeDefinitionClasses(
@@ -34,13 +82,20 @@ class CodeGenerator {
     for (final entry in schema.definitions.entries.sortedBy((e) => e.key)) {
       final name = entry.key;
       final type = entry.value;
-      final baseType = type.baseType;
+
+      var baseType = type.baseType;
       final resolvedBaseType =
           baseType != null ? schema.typeFor(baseType) : null;
       final classProperties = schema.propertiesFor(type, includeBase: false);
       final baseProperties = resolvedBaseType != null
           ? schema.propertiesFor(resolvedBaseType)
           : <String, JsonType>{};
+
+      // Create a synthetic base class for arguments to provide type safety
+      // for sending requests.
+      if (baseType == null && name.endsWith('Arguments')) {
+        baseType = JsonType.named(schema, 'RequestArguments');
+      }
 
       _writeClass(
         buffer,
@@ -61,8 +116,9 @@ class CodeGenerator {
     Map<String, JsonType> classProperties,
     Map<String, JsonType> baseProperties,
     JsonType? baseType,
-    JsonType? resolvedBaseType,
-  ) {
+    JsonType? resolvedBaseType, {
+    Map<String, String> additionalValues = const {},
+  }) {
     // Some properties are defined in both the base and the class, because the
     // type may be narrowed, but sometimes we only want those that are defined
     // only in this class.
@@ -79,6 +135,11 @@ class CodeGenerator {
     buffer
       ..writeln('{')
       ..indent();
+    for (final val in additionalValues.entries) {
+      buffer
+        ..writeIndentedln('@override')
+        ..writeIndentedln("final ${val.key} = '${val.value}';");
+    }
     _writeFields(buffer, type, classOnlyProperties);
     buffer.writeln();
     _writeFromJsonStaticMethod(buffer, name);
@@ -201,7 +262,7 @@ class CodeGenerator {
       final isOptional = !type.requiresField(propertyName);
       final dartType = propertyType.asDartType(isOptional: isOptional);
       _writeDescription(buffer, propertyType.description);
-      buffer.writeIndented('final $dartType $fieldName;');
+      buffer.writeIndentedln('final $dartType $fieldName;');
     }
   }
 
@@ -286,8 +347,11 @@ class CodeGenerator {
       }
       for (final entry in baseProperties.entries.sortedBy((e) => e.key)) {
         final propertyName = entry.key;
+        // If this field is defined by the class and the base, prefer the
+        // class one as it may contain things like the literal values.
+        final propertyType = classProperties[propertyName] ?? entry.value;
+
         final fieldName = _dartSafeName(propertyName);
-        final propertyType = entry.value;
         if (propertyType.literalValue != null) {
           continue;
         }
@@ -313,7 +377,14 @@ class CodeGenerator {
           ..indent();
         for (final entry in baseProperties.entries) {
           final propertyName = entry.key;
-          final propertyType = entry.value;
+          // Skip any properties that have literal values defined by the base
+          // as we won't need to supply them.
+          if (entry.value.literalValue != null) {
+            continue;
+          }
+          // If this field is defined by the class and the base, prefer the
+          // class one as it may contain things like the literal values.
+          final propertyType = classProperties[propertyName] ?? entry.value;
           final fieldName = _dartSafeName(propertyName);
           final literalValue = propertyType.literalValue;
           final value = literalValue != null ? "'$literalValue'" : fieldName;

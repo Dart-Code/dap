@@ -94,8 +94,8 @@ extension JsonTypeExtensions on JsonType {
     if (required?.contains(propertyName) ?? false) {
       return true;
     }
-    final base = baseType;
-    if (base != null && root.typeFor(base).requiresField(propertyName)) {
+    if (allOf?.any((type) => root.typeFor(type).requiresField(propertyName)) ??
+        false) {
       return true;
     }
 

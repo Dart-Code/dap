@@ -37,6 +37,20 @@ class JsonType {
         title = null,
         type = null;
 
+  /// Creates a dummy type to represent a type that exists outside of the
+  /// generated code.
+  JsonType.named(this.root, String name)
+      : allOf = null,
+        oneOf = null,
+        description = null,
+        dollarRef = '#/definitions/$name',
+        enumValues = null,
+        items = null,
+        properties = null,
+        required = null,
+        title = null,
+        type = null;
+
   JsonType.fromJson(this.root, Map<String, Object?> json)
       : allOf = json['allOf'] == null
             ? null
