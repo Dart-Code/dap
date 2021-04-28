@@ -39,13 +39,26 @@ String _toDartUnionType(List<String> types) {
 extension JsonSchemaExtensions on JsonSchema {
   JsonType typeFor(JsonType type) => type.dollarRef != null
       // TODO(dantup): Do we need to support more than just refs to definitions?
-      ? definitions[type.dollarRef!.replaceAll('#/definitions/', '')]!
+      ? definitions[type.refName]!
       : type;
 
-  Map<String, JsonType> propertiesFor(JsonType type) => {
-        for (final other in type.allOf ?? []) ...propertiesFor(typeFor(other)),
-        ...?type.properties,
-      };
+  Map<String, JsonType> propertiesFor(JsonType type) {
+    // Merge this types direct properties with anything from the included
+    // (allOf) types, but excluding those that come from the base class.
+    final properties = {
+      ...?type.properties,
+      for (final other in type.allOf ?? []) ...propertiesFor(typeFor(other))
+    };
+
+    // Remove any types that are defined in the base.
+    final baseType = type.baseType;
+    final basePropertyNames = baseType != null
+        ? propertiesFor(typeFor(baseType)).keys.toSet()
+        : <String>{};
+    properties.removeWhere((name, type) => basePropertyNames.contains(name));
+
+    return properties;
+  }
 }
 
 extension JsonTypeExtensions on JsonType {
@@ -70,4 +83,14 @@ extension JsonTypeExtensions on JsonType {
 
   bool requiresField(String propertyName) =>
       required?.contains(propertyName) ?? false;
+
+  String get refName => dollarRef!.replaceAll('#/definitions/', '');
+
+  JsonType? get baseType {
+    final all = allOf;
+    if (all != null && all.length > 1 && all.first.dollarRef != null) {
+      return all.first;
+    }
+    return null;
+  }
 }

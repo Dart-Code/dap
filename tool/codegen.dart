@@ -9,14 +9,20 @@ class CodeGenerator {
       final name = entry.key;
       final type = entry.value;
       final properties = schema.propertiesFor(type);
+      final baseType = type.baseType;
 
       _writeTypeDescription(buffer, type);
+      buffer.write('class $name ');
+      if (baseType != null) {
+        buffer.write('extends ${baseType.refName} ');
+      }
       buffer
-        ..writeln('class $name {')
+        ..writeln('{')
         ..indent();
       _writeFields(buffer, type, properties);
       buffer.writeln();
-      _writeFromJsonConstructor(buffer, name, type, properties);
+      _writeFromJsonConstructor(buffer, name, type, properties,
+          callSuper: baseType != null);
       buffer.writeln();
       _writeCanParseMethod(buffer, type, properties);
       buffer
@@ -137,10 +143,15 @@ class CodeGenerator {
     }
   }
 
-  void _writeFromJsonConstructor(IndentableStringBuffer buffer, String name,
-      JsonType type, Map<String, JsonType> properties) {
+  void _writeFromJsonConstructor(
+    IndentableStringBuffer buffer,
+    String name,
+    JsonType type,
+    Map<String, JsonType> properties, {
+    bool callSuper = false,
+  }) {
     buffer.writeIndented('$name.fromJson(Map<String, Object?> obj)');
-    if (properties.isNotEmpty) {
+    if (properties.isNotEmpty || callSuper) {
       buffer
         ..writeln(':')
         ..indent();
@@ -162,6 +173,12 @@ class CodeGenerator {
           buffer.write("!obj.containsKey('$propertyName') ? null : ");
         }
         _writeFromJsonExpression(buffer, propertyType, "obj['$propertyName']");
+      }
+      if (callSuper) {
+        if (!isFirst) {
+          buffer.writeln(',');
+        }
+        buffer.writeIndented('super.fromJson(obj)');
       }
       buffer.outdent();
     }
