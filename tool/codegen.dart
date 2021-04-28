@@ -92,6 +92,9 @@ class CodeGenerator {
     buffer.writeln();
     _writeCanParseMethod(buffer, type, classProperties,
         baseTypeRefName: baseType?.refName);
+    buffer.writeln();
+    _writeToJsonMethod(buffer, name, type, classOnlyProperties,
+        callSuper: resolvedBaseType != null);
     buffer
       ..outdent()
       ..writeln('}')
@@ -363,6 +366,32 @@ class CodeGenerator {
       buffer.outdent();
     }
     buffer.writeln(';');
+  }
+
+  void _writeToJsonMethod(
+    IndentableStringBuffer buffer,
+    String name,
+    JsonType type,
+    Map<String, JsonType> properties, {
+    bool callSuper = false,
+  }) {
+    if (callSuper) {
+      buffer.writeIndentedln('@override');
+    }
+    buffer
+      ..writeIndentedln('Map<String, Object?> toJson() => {')
+      ..indent();
+    if (callSuper) {
+      buffer.writeIndentedln('...super.toJson(),');
+    }
+    for (final entry in properties.entries.sortedBy((e) => e.key)) {
+      final propertyName = entry.key;
+      final fieldName = _dartSafeName(propertyName);
+      buffer.writeIndentedln("'$propertyName': $fieldName, ");
+    }
+    buffer
+      ..outdent()
+      ..writeIndentedln('};');
   }
 
   void _writeTypeCheckCondition(
