@@ -307,6 +307,9 @@ class CodeGenerator {
         }
       }
     } else if (type.isSpecType) {
+      if (isOptional) {
+        buffer.write('$valueCode == null ? null : ');
+      }
       buffer.write(
           '$dartTypeNotNullable.fromJson($valueCode as Map<String, Object?>)');
     } else {
