@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:dap/src/adapters/dart.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
-import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
 
 import '../server.dart';
 import '../test_utils.dart';

@@ -1,4 +1,5 @@
 import 'dart:isolate';
+
 import 'package:path/path.dart' as path;
 
 final Future<String> testApplicationsDirectory = (() async => path.join(

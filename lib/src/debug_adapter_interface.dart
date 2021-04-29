@@ -8,6 +8,8 @@ void handleRequest(DebugAdapter dap, Request request) {
 }
 
 abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
+  TLaunchArgs Function(Map<String, Object?>) get parseLaunchArgs;
+
   Future<void> configurationDoneRequest(ConfigurationDoneArguments? args,
       Request request, void Function(void) sendResponse);
 
@@ -26,8 +28,6 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
 
   Future<void> launchRequest(
       TLaunchArgs? args, Request request, void Function(void) sendResponse);
-
-  TLaunchArgs Function(Map<String, Object?>) get parseLaunchArgs;
 
   void _handleRequest(Request request) {
     if (request.command == 'initialize') {

@@ -1,5 +1,6 @@
-import 'json_schema.dart';
 import 'package:collection/collection.dart';
+
+import 'json_schema.dart';
 
 const _dartSimpleTypes = {
   'bool',

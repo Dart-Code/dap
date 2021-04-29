@@ -33,26 +33,6 @@ class CodeGenerator {
     }
   }
 
-  void writeEventTypeLookup(IndentableStringBuffer buffer, JsonSchema schema) {
-    buffer
-      ..writeln('const eventTypes = {')
-      ..indent();
-    for (final entry in schema.definitions.entries.sortedBy((e) => e.key)) {
-      final name = entry.key;
-      final type = entry.value;
-      final baseType = type.baseType;
-
-      if (baseType?.refName == 'Event') {
-        final classProperties = schema.propertiesFor(type);
-        final eventType = classProperties['event']!.literalValue;
-        buffer.writeIndentedln("${name}Body: '$eventType',");
-      }
-    }
-    buffer
-      ..writeln('};')
-      ..outdent();
-  }
-
   void writeCommandArgumentTypeLookup(
       IndentableStringBuffer buffer, JsonSchema schema) {
     buffer
@@ -109,57 +89,24 @@ class CodeGenerator {
     }
   }
 
-  void _writeClass(
-    IndentableStringBuffer buffer,
-    JsonType type,
-    String name,
-    Map<String, JsonType> classProperties,
-    Map<String, JsonType> baseProperties,
-    JsonType? baseType,
-    JsonType? resolvedBaseType, {
-    Map<String, String> additionalValues = const {},
-  }) {
-    // Some properties are defined in both the base and the class, because the
-    // type may be narrowed, but sometimes we only want those that are defined
-    // only in this class.
-    final classOnlyProperties = {
-      for (final property in classProperties.entries)
-        if (!baseProperties.containsKey(property.key))
-          property.key: property.value,
-    };
-    _writeTypeDescription(buffer, type);
-    buffer.write('class $name ');
-    if (baseType != null) {
-      buffer.write('extends ${baseType.refName} ');
-    }
+  void writeEventTypeLookup(IndentableStringBuffer buffer, JsonSchema schema) {
     buffer
-      ..writeln('{')
+      ..writeln('const eventTypes = {')
       ..indent();
-    for (final val in additionalValues.entries) {
-      buffer
-        ..writeIndentedln('@override')
-        ..writeIndentedln("final ${val.key} = '${val.value}';");
+    for (final entry in schema.definitions.entries.sortedBy((e) => e.key)) {
+      final name = entry.key;
+      final type = entry.value;
+      final baseType = type.baseType;
+
+      if (baseType?.refName == 'Event') {
+        final classProperties = schema.propertiesFor(type);
+        final eventType = classProperties['event']!.literalValue;
+        buffer.writeIndentedln("${name}Body: '$eventType',");
+      }
     }
-    _writeFields(buffer, type, classOnlyProperties);
-    buffer.writeln();
-    _writeFromJsonStaticMethod(buffer, name);
-    buffer.writeln();
-    _writeConstructor(buffer, name, type, classProperties, baseProperties,
-        classOnlyProperties,
-        baseType: resolvedBaseType);
-    buffer.writeln();
-    _writeFromMapConstructor(buffer, name, type, classOnlyProperties,
-        callSuper: resolvedBaseType != null);
-    buffer.writeln();
-    _writeCanParseMethod(buffer, type, classProperties,
-        baseTypeRefName: baseType?.refName);
-    buffer.writeln();
-    _writeToJsonMethod(buffer, name, type, classOnlyProperties,
-        callSuper: resolvedBaseType != null);
     buffer
-      ..outdent()
-      ..writeln('}')
-      ..writeln();
+      ..writeln('};')
+      ..outdent();
   }
 
   String _dartSafeName(String name) {
@@ -244,6 +191,137 @@ class CodeGenerator {
       ..writeIndentedln('}');
   }
 
+  void _writeClass(
+    IndentableStringBuffer buffer,
+    JsonType type,
+    String name,
+    Map<String, JsonType> classProperties,
+    Map<String, JsonType> baseProperties,
+    JsonType? baseType,
+    JsonType? resolvedBaseType, {
+    Map<String, String> additionalValues = const {},
+  }) {
+    // Some properties are defined in both the base and the class, because the
+    // type may be narrowed, but sometimes we only want those that are defined
+    // only in this class.
+    final classOnlyProperties = {
+      for (final property in classProperties.entries)
+        if (!baseProperties.containsKey(property.key))
+          property.key: property.value,
+    };
+    _writeTypeDescription(buffer, type);
+    buffer.write('class $name ');
+    if (baseType != null) {
+      buffer.write('extends ${baseType.refName} ');
+    }
+    buffer
+      ..writeln('{')
+      ..indent();
+    for (final val in additionalValues.entries) {
+      buffer
+        ..writeIndentedln('@override')
+        ..writeIndentedln("final ${val.key} = '${val.value}';");
+    }
+    _writeFields(buffer, type, classOnlyProperties);
+    buffer.writeln();
+    _writeFromJsonStaticMethod(buffer, name);
+    buffer.writeln();
+    _writeConstructor(buffer, name, type, classProperties, baseProperties,
+        classOnlyProperties,
+        baseType: resolvedBaseType);
+    buffer.writeln();
+    _writeFromMapConstructor(buffer, name, type, classOnlyProperties,
+        callSuper: resolvedBaseType != null);
+    buffer.writeln();
+    _writeCanParseMethod(buffer, type, classProperties,
+        baseTypeRefName: baseType?.refName);
+    buffer.writeln();
+    _writeToJsonMethod(buffer, name, type, classOnlyProperties,
+        callSuper: resolvedBaseType != null);
+    buffer
+      ..outdent()
+      ..writeln('}')
+      ..writeln();
+  }
+
+  void _writeConstructor(
+    IndentableStringBuffer buffer,
+    String name,
+    JsonType type,
+    Map<String, JsonType> classProperties,
+    Map<String, JsonType> baseProperties,
+    Map<String, JsonType> classOnlyProperties, {
+    required JsonType? baseType,
+  }) {
+    buffer.writeIndented('$name(');
+    if (classProperties.isNotEmpty || baseProperties.isNotEmpty) {
+      buffer
+        ..writeln('{')
+        ..indent();
+      for (final entry in classOnlyProperties.entries.sortedBy((e) => e.key)) {
+        final propertyName = entry.key;
+        final fieldName = _dartSafeName(propertyName);
+        final isOptional = !type.requiresField(propertyName);
+        buffer.writeIndented('');
+        if (!isOptional) {
+          buffer.write('required ');
+        }
+        buffer.writeln('this.$fieldName, ');
+      }
+      for (final entry in baseProperties.entries.sortedBy((e) => e.key)) {
+        final propertyName = entry.key;
+        // If this field is defined by the class and the base, prefer the
+        // class one as it may contain things like the literal values.
+        final propertyType = classProperties[propertyName] ?? entry.value;
+
+        final fieldName = _dartSafeName(propertyName);
+        if (propertyType.literalValue != null) {
+          continue;
+        }
+        final isOptional = !type.requiresField(propertyName);
+        final dartType = propertyType.asDartType(isOptional: isOptional);
+        buffer.writeIndented('');
+        if (!isOptional) {
+          buffer.write('required ');
+        }
+        buffer.writeln('$dartType $fieldName, ');
+      }
+      buffer
+        ..outdent()
+        ..writeIndented('}');
+    }
+    buffer.write(')');
+
+    if (baseType != null) {
+      buffer.write(': super(');
+      if (baseProperties.isNotEmpty) {
+        buffer
+          ..writeln()
+          ..indent();
+        for (final entry in baseProperties.entries) {
+          final propertyName = entry.key;
+          // Skip any properties that have literal values defined by the base
+          // as we won't need to supply them.
+          if (entry.value.literalValue != null) {
+            continue;
+          }
+          // If this field is defined by the class and the base, prefer the
+          // class one as it may contain things like the literal values.
+          final propertyType = classProperties[propertyName] ?? entry.value;
+          final fieldName = _dartSafeName(propertyName);
+          final literalValue = propertyType.literalValue;
+          final value = literalValue != null ? "'$literalValue'" : fieldName;
+          buffer.writeIndentedln('$fieldName: $value, ');
+        }
+        buffer
+          ..outdent()
+          ..writeIndented('');
+      }
+      buffer.write(')');
+    }
+    buffer.writeln(';');
+  }
+
   void _writeDescription(IndentableStringBuffer buffer, String? description) {
     final maxLength = 80 - buffer.totalIndent - 4;
     if (description != null) {
@@ -323,84 +401,6 @@ class CodeGenerator {
   ) =>
       buffer.writeIndentedln(
           'static $name fromJson(Map<String, Object?> obj) => $name.fromMap(obj);');
-
-  void _writeConstructor(
-    IndentableStringBuffer buffer,
-    String name,
-    JsonType type,
-    Map<String, JsonType> classProperties,
-    Map<String, JsonType> baseProperties,
-    Map<String, JsonType> classOnlyProperties, {
-    required JsonType? baseType,
-  }) {
-    buffer.writeIndented('$name(');
-    if (classProperties.isNotEmpty || baseProperties.isNotEmpty) {
-      buffer
-        ..writeln('{')
-        ..indent();
-      for (final entry in classOnlyProperties.entries.sortedBy((e) => e.key)) {
-        final propertyName = entry.key;
-        final fieldName = _dartSafeName(propertyName);
-        final isOptional = !type.requiresField(propertyName);
-        buffer.writeIndented('');
-        if (!isOptional) {
-          buffer.write('required ');
-        }
-        buffer.writeln('this.$fieldName, ');
-      }
-      for (final entry in baseProperties.entries.sortedBy((e) => e.key)) {
-        final propertyName = entry.key;
-        // If this field is defined by the class and the base, prefer the
-        // class one as it may contain things like the literal values.
-        final propertyType = classProperties[propertyName] ?? entry.value;
-
-        final fieldName = _dartSafeName(propertyName);
-        if (propertyType.literalValue != null) {
-          continue;
-        }
-        final isOptional = !type.requiresField(propertyName);
-        final dartType = propertyType.asDartType(isOptional: isOptional);
-        buffer.writeIndented('');
-        if (!isOptional) {
-          buffer.write('required ');
-        }
-        buffer.writeln('$dartType $fieldName, ');
-      }
-      buffer
-        ..outdent()
-        ..writeIndented('}');
-    }
-    buffer.write(')');
-
-    if (baseType != null) {
-      buffer.write(': super(');
-      if (baseProperties.isNotEmpty) {
-        buffer
-          ..writeln()
-          ..indent();
-        for (final entry in baseProperties.entries) {
-          final propertyName = entry.key;
-          // Skip any properties that have literal values defined by the base
-          // as we won't need to supply them.
-          if (entry.value.literalValue != null) {
-            continue;
-          }
-          // If this field is defined by the class and the base, prefer the
-          // class one as it may contain things like the literal values.
-          final propertyType = classProperties[propertyName] ?? entry.value;
-          final fieldName = _dartSafeName(propertyName);
-          final literalValue = propertyType.literalValue;
-          final value = literalValue != null ? "'$literalValue'" : fieldName;
-          buffer.writeIndentedln('$fieldName: $value, ');
-        }
-        buffer
-          ..outdent()
-          ..writeIndented('');
-      }
-      buffer.write(')');
-    }
-    buffer.writeln(';');
-  }
 
   void _writeFromMapConstructor(
     IndentableStringBuffer buffer,
