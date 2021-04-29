@@ -1,6 +1,12 @@
+import 'dart:io';
 import 'dart:isolate';
 
+import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:path/path.dart' as path;
+
+final eol = Platform.isWindows ? '\r\n' : '\n';
+
+final initArgs = InitializeRequestArguments(adapterID: 'test');
 
 final Future<String> testApplicationsDirectory = (() async => path.join(
     path.dirname(path.dirname(

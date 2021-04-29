@@ -44,11 +44,12 @@ void main() {
     final output = (await outputEvents).map((e) => e.output).join();
     expect(
         output,
-        equals(
-          'Hello!\n'
-          'World!\n'
-          'args: [one, two]\n'
-          '\nExited.',
-        ));
+        equals([
+          'Hello!',
+          'World!',
+          'args: [one, two]',
+          '',
+          'Exited.',
+        ].join(eol)));
   });
 }

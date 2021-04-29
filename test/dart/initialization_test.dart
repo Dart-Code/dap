@@ -2,9 +2,9 @@ import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:test/test.dart';
 
 import '../server.dart';
+import '../test_utils.dart';
 
 void main() {
-  final initArgs = InitializeRequestArguments(adapterID: 'test');
   test('Server responds to initializeRequest', () async {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
