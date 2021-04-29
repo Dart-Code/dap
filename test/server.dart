@@ -77,7 +77,7 @@ class _OutOfProcess extends DapTestServer {
             .toFilePath();
     final packageDirectory = path.dirname(path.dirname(packageLibDirectory));
     final process = await Process.start(
-      Platform.executable,
+      Platform.resolvedExecutable,
       [path.join(packageDirectory, 'bin', 'main.dart')],
     );
 

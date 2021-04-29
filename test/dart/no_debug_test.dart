@@ -35,7 +35,7 @@ void main() {
           program: 'hello_world.dart',
           cwd: await testApplicationsDirectory,
           args: ['one', 'two'],
-          dartSdkPath: path.dirname(path.dirname(Platform.executable)),
+          dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
         ),
       )
     ]);
