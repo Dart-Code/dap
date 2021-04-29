@@ -1,20 +1,18 @@
-import 'package:dap/src/debug_adapter_interface.dart';
 import 'package:dap/src/debug_adapter_protocol.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 
 /// An implementation of [DebugAdapter] that provides some common
 /// functionality to communicate over a [LspByteStreamServerChannel].
-abstract class CommonDebugAdapter<TLaunchArgs extends LaunchRequestArguments>
-    extends DebugAdapter<TLaunchArgs> {
+abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   int _sequence = 1;
   final LspByteStreamServerChannel _channel;
 
-  CommonDebugAdapter(this._channel) {
+  DebugAdapter(this._channel) {
     _channel.listen((ProtocolMessage message) {
       if (message is Request) {
         try {
-          handleRequest(this, message);
+          _handleRequest(message);
         } catch (e, s) {
           // TODO(dantup): Review whether this error handling is sufficient.
           final response = Response(
@@ -37,7 +35,14 @@ abstract class CommonDebugAdapter<TLaunchArgs extends LaunchRequestArguments>
     });
   }
 
-  @override
+  TLaunchArgs Function(Map<String, Object?>) get parseLaunchArgs;
+
+  Future<void> configurationDoneRequest(ConfigurationDoneArguments? args,
+      Request request, void Function(void) sendResponse);
+
+  Future<void> disconnectRequest(DisconnectArguments? args, Request request,
+      void Function(void) sendResponse);
+
   Future<void> handle<TArg, TResp>(
     Request request,
     Future<void> Function(TArg?, Request, void Function(TResp)) handler,
@@ -72,16 +77,43 @@ abstract class CommonDebugAdapter<TLaunchArgs extends LaunchRequestArguments>
         'sendResponse was not called in ${request.command}');
   }
 
-  void sendEvent(EventBody event) => _channel.sendEvent(Event(
-      seq: _sequence++, event: eventTypes[event.runtimeType]!, body: event));
+  Future<void> initializeRequest(InitializeRequestArguments? args,
+      Request request, void Function(Capabilities) sendResponse);
+
+  Future<void> launchRequest(
+      TLaunchArgs? args, Request request, void Function(void) sendResponse);
+
+  void sendEvent(EventBody body) {
+    final event = Event(
+      seq: _sequence++,
+      event: eventTypes[body.runtimeType]!,
+      body: body,
+    );
+    _channel.sendEvent(event);
+  }
 
   void sendRequest(RequestArguments arguments) {
     final request = Request(
       seq: _sequence++,
-      command: commandTypes[arguments]!,
+      command: commandTypes[arguments.runtimeType]!,
       arguments: arguments,
     );
     _channel.sendRequest(request);
+  }
+
+  void _handleRequest(Request request) {
+    if (request.command == 'initialize') {
+      handle(request, initializeRequest, InitializeRequestArguments.fromJson);
+    } else if (request.command == 'launch') {
+      handle(request, launchRequest, parseLaunchArgs);
+    } else if (request.command == 'disconnect') {
+      handle(request, disconnectRequest, DisconnectArguments.fromJson);
+    } else if (request.command == 'configurationDone') {
+      handle(request, configurationDoneRequest,
+          ConfigurationDoneArguments.fromJson);
+    } else {
+      throw Exception('Unknown command: ${request.command}');
+    }
   }
 
   void _handleResponse(Response response) {}

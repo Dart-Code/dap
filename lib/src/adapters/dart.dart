@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dap/src/debug_adapter_common.dart';
+import 'package:dap/src/debug_adapter.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
 
-class DartDebugAdapter extends CommonDebugAdapter<DartLaunchRequestArguments> {
+class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   Process? _process;
 
   @override
