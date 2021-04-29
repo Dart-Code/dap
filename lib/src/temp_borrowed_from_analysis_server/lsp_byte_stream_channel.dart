@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
+import 'package:dap/src/logging.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_packet_transformer.dart';
 
 class LspByteStreamServerChannel {
@@ -13,13 +14,15 @@ class LspByteStreamServerChannel {
 
   final StreamSink<List<int>> _output;
 
+  final Logger _logger;
+
   /// Completer that will be signalled when the input stream is closed.
   final Completer _closed = Completer();
 
   /// True if [close] has been called.
   bool _closeRequested = false;
 
-  LspByteStreamServerChannel(this._input, this._output);
+  LspByteStreamServerChannel(this._input, this._output, this._logger);
 
   /// Future that will be completed when the input stream is closed.
   Future get closed {
@@ -61,6 +64,7 @@ class LspByteStreamServerChannel {
     if (_closed.isCompleted) {
       return;
     }
+    _logger.log('DAP: <== $data');
     try {
       final Map<String, Object?> json = jsonDecode(data);
       final type = json['type'] as String;
@@ -94,6 +98,8 @@ class LspByteStreamServerChannel {
     // Header is always ascii, body is always utf8!
     _write(asciiEncodedHeader);
     _write(utf8EncodedBody);
+
+    _logger.log('DAP: ==> $jsonEncodedBody');
   }
 
   void _sendParseError() {

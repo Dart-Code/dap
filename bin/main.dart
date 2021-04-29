@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dap/src/adapters/dart.dart';
+import 'package:dap/src/logging.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 
@@ -10,8 +11,9 @@ void main(List<String> args) {
     () {
       // Isolate.current.setErrorsFatal(false);
       // TODO(dantup): Handle picking different debug adapters for Dart/Flutter/Testing.
-      final channel = LspByteStreamServerChannel(stdin, stdout.nonBlocking);
-      final adapter = DartDebugAdapter(channel);
+      final channel =
+          LspByteStreamServerChannel(stdin, stdout.nonBlocking, nullLogger);
+      final adapter = DartDebugAdapter(channel, nullLogger);
       // TODO(dantup): Wait for exit?
     },
     (e, s) {

@@ -8,6 +8,12 @@ final eol = Platform.isWindows ? '\r\n' : '\n';
 
 final initArgs = InitializeRequestArguments(adapterID: 'test');
 
+final Future<String> logsDirectory = (() async => path.join(
+    path.dirname(path.dirname(
+        (await Isolate.resolvePackageUri(Uri.parse('package:dap/dap.dart')))!
+            .toFilePath())),
+    'logs'))();
+
 final Future<String> testApplicationsDirectory = (() async => path.join(
     path.dirname(path.dirname(
         (await Isolate.resolvePackageUri(Uri.parse('package:dap/dap.dart')))!

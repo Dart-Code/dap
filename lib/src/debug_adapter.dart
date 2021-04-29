@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dap/src/debug_adapter_protocol.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
+import 'package:dap/src/logging.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 
 /// An implementation of [DebugAdapter] that provides some common
@@ -9,10 +10,11 @@ import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_chann
 abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   int _sequence = 1;
   final LspByteStreamServerChannel _channel;
+  final Logger logger;
 
   final eol = Platform.isWindows ? '\r\n' : '\n';
 
-  DebugAdapter(this._channel) {
+  DebugAdapter(this._channel, this.logger) {
     _channel.listen((ProtocolMessage message) {
       if (message is Request) {
         try {
@@ -41,15 +43,15 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
 
   TLaunchArgs Function(Map<String, Object?>) get parseLaunchArgs;
 
-  Future<void> configurationDoneRequest(ConfigurationDoneArguments? args,
-      Request request, void Function(void) sendResponse);
+  Future<void> configurationDoneRequest(Request request,
+      ConfigurationDoneArguments? args, void Function(void) sendResponse);
 
-  Future<void> disconnectRequest(DisconnectArguments? args, Request request,
+  Future<void> disconnectRequest(Request request, DisconnectArguments? args,
       void Function(void) sendResponse);
 
   Future<void> handle<TArg, TResp>(
     Request request,
-    Future<void> Function(TArg?, Request, void Function(TResp)) handler,
+    Future<void> Function(Request, TArg?, void Function(TResp)) handler,
     TArg Function(Map<String, Object?>) fromJson,
   ) async {
     final args = request.arguments != null
@@ -76,16 +78,18 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       _channel.sendResponse(response);
     }
 
-    await handler(args, request, sendResponse);
+    await handler(request, args, sendResponse);
     assert(sendResponseCalled,
         'sendResponse was not called in ${request.command}');
   }
 
-  Future<void> initializeRequest(InitializeRequestArguments? args,
-      Request request, void Function(Capabilities) sendResponse);
+  Future<void> initializeRequest(
+      Request request,
+      InitializeRequestArguments? args,
+      void Function(Capabilities) sendResponse);
 
   Future<void> launchRequest(
-      TLaunchArgs? args, Request request, void Function(void) sendResponse);
+      Request request, TLaunchArgs? args, void Function(void) sendResponse);
 
   void sendEvent(EventBody body) {
     final event = Event(

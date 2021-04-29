@@ -14,7 +14,8 @@ dependencies:
   collection:
   http:
   meta:
-  pedantic: ^1.11.0
+  pedantic:
+  vm_service:
 
 dev_dependencies:
   path:
