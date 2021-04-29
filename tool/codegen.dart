@@ -13,9 +13,9 @@ class CodeGenerator {
       final baseType = type.baseType;
 
       if (baseType?.refName == 'Response' || baseType?.refName == 'Event') {
-        final baseClass = baseType?.refName == 'Response'
-            ? JsonType.named(schema, 'ResponseBody')
-            : JsonType.named(schema, 'EventBody');
+        final baseClass = baseType?.refName == 'Event'
+            ? JsonType.named(schema, 'EventBody')
+            : null;
         final classProperties = schema.propertiesFor(type);
         final bodyProperty = classProperties['body'];
         var bodyPropertyProperties = bodyProperty?.properties;

@@ -5,7 +5,8 @@ import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_chann
 
 /// An implementation of [DebugAdapter] that provides some common
 /// functionality to communicate over a [LspByteStreamServerChannel].
-abstract class CommonDebugAdapter extends DebugAdapter {
+abstract class CommonDebugAdapter<TLaunchArgs extends LaunchRequestArguments>
+    extends DebugAdapter<TLaunchArgs> {
   int _sequence = 1;
   final LspByteStreamServerChannel _channel;
 
@@ -37,7 +38,7 @@ abstract class CommonDebugAdapter extends DebugAdapter {
   }
 
   @override
-  Future<void> handle<TArg, TResp extends ResponseBody>(
+  Future<void> handle<TArg, TResp>(
     Request request,
     Future<void> Function(TArg?, Request, void Function(TResp)) handler,
     TArg Function(Map<String, Object?>) fromJson,
@@ -74,7 +75,14 @@ abstract class CommonDebugAdapter extends DebugAdapter {
   void sendEvent(EventBody event) => _channel.sendEvent(Event(
       seq: _sequence++, event: eventTypes[event.runtimeType]!, body: event));
 
-  void sendRequest(Request request) => _channel.sendRequest(request);
+  void sendRequest(RequestArguments arguments) {
+    final request = Request(
+      seq: _sequence++,
+      command: commandTypes[arguments]!,
+      arguments: arguments,
+    );
+    _channel.sendRequest(request);
+  }
 
   void _handleResponse(Response response) {}
 }
