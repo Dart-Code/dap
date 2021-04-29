@@ -71,6 +71,12 @@ class CodeGenerator {
           ? schema.propertiesFor(resolvedBaseType)
           : <String, JsonType>{};
 
+      // Skip creation of Request sub-classes, as we don't use these we just
+      // pass the arguments in to the method directly.
+      if (name != 'Request' && name.endsWith('Request')) {
+        continue;
+      }
+
       // Create a synthetic base class for arguments to provide type safety
       // for sending requests.
       if (baseType == null && name.endsWith('Arguments')) {
