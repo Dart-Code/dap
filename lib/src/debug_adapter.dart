@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dap/src/debug_adapter_protocol.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
@@ -7,6 +9,8 @@ import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_chann
 abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   int _sequence = 1;
   final LspByteStreamServerChannel _channel;
+
+  final eol = Platform.isWindows ? '\r\n' : '\n';
 
   DebugAdapter(this._channel) {
     _channel.listen((ProtocolMessage message) {

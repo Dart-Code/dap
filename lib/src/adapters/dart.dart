@@ -64,7 +64,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     sendEvent(
       // Always add a newline since the last printed text might not have had
       // one.
-      OutputEventBody(category: 'console', output: '\nExited$codeSuffix.'),
+      OutputEventBody(category: 'console', output: '${eol}Exited$codeSuffix.'),
     );
     sendEvent(TerminatedEventBody());
   }
