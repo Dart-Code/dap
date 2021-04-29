@@ -77,6 +77,12 @@ class CodeGenerator {
         continue;
       }
 
+      // Skip creation of Event sub-classes, as we don't use these we just
+      // pass the body in to sendEvent directly.
+      if (name != 'Event' && name.endsWith('Event')) {
+        continue;
+      }
+
       // Create a synthetic base class for arguments to provide type safety
       // for sending requests.
       if (baseType == null && name.endsWith('Arguments')) {
