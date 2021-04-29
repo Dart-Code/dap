@@ -1,7 +1,7 @@
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:test/test.dart';
 
-import 'server.dart';
+import '../server.dart';
 
 void main() {
   final initArgs = InitializeRequestArguments(adapterID: 'test');
@@ -13,7 +13,7 @@ void main() {
 
     expect(response.success, isTrue);
     expect(response.command, equals('initialize'));
-    final result = Capabilities.fromJson(response.body as Map<String, Object>);
+    final result = Capabilities.fromJson(response.body as Map<String, Object?>);
 
     // TODO(dantup): Test for actual desired value
     expect(result.supportsConfigurationDoneRequest, isTrue);
