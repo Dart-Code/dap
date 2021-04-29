@@ -179,42 +179,6 @@ class Breakpoint {
   };
 }
 
-/// The event indicates that some information about a breakpoint has changed.
-class BreakpointEvent extends Event {
-
-  static BreakpointEvent fromJson(Map<String, Object?> obj) => BreakpointEvent.fromMap(obj);
-
-  BreakpointEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'breakpoint', 
-    body: body, 
-  );
-
-  BreakpointEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// Properties of a breakpoint location returned from the 'breakpointLocations'
 /// request.
 class BreakpointLocation {
@@ -793,49 +757,6 @@ class Capabilities {
   };
 }
 
-/// The event indicates that one or more capabilities have changed.
-/// Since the capabilities are dependent on the frontend and its UI, it might
-/// not be possible to change that at random times (or too late).
-/// Consequently this event has a hint characteristic: a frontend can only be
-/// expected to make a 'best effort' in honouring individual capabilities but
-/// there are no guarantees.
-/// Only changed capabilities need to be included, all other capabilities keep
-/// their values.
-class CapabilitiesEvent extends Event {
-
-  static CapabilitiesEvent fromJson(Map<String, Object?> obj) => CapabilitiesEvent.fromMap(obj);
-
-  CapabilitiesEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'capabilities', 
-    body: body, 
-  );
-
-  CapabilitiesEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// The checksum of an item calculated by the specified algorithm.
 class Checksum {
   /// The algorithm used to calculate this checksum.
@@ -1298,47 +1219,6 @@ class ContinueResponse extends Response {
       return false;
     }
     return Response.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
-/// The event indicates that the execution of the debuggee has continued.
-/// Please note: a debug adapter is not expected to send this event in response
-/// to a request that implies that execution continues, e.g. 'launch' or
-/// 'continue'.
-/// It is only necessary to send a 'continued' event if there was no previous
-/// request that implied this.
-class ContinuedEvent extends Event {
-
-  static ContinuedEvent fromJson(Map<String, Object?> obj) => ContinuedEvent.fromMap(obj);
-
-  ContinuedEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'continued', 
-    body: body, 
-  );
-
-  ContinuedEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
   }
 
   @override
@@ -2350,42 +2230,6 @@ class ExceptionPathSegment {
   };
 }
 
-/// The event indicates that the debuggee has exited and returns its exit code.
-class ExitedEvent extends Event {
-
-  static ExitedEvent fromJson(Map<String, Object?> obj) => ExitedEvent.fromMap(obj);
-
-  ExitedEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'exited', 
-    body: body, 
-  );
-
-  ExitedEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// Properties of a breakpoint passed to the setFunctionBreakpoints request.
 class FunctionBreakpoint {
   /// An optional expression for conditional breakpoints.
@@ -2844,50 +2688,6 @@ class InitializeResponse extends Response {
   };
 }
 
-/// This event indicates that the debug adapter is ready to accept configuration
-/// requests (e.g. SetBreakpointsRequest, SetExceptionBreakpointsRequest).
-/// A debug adapter is expected to send this event when it is ready to accept
-/// configuration requests (but not before the 'initialize' request has
-/// finished).
-/// The sequence of events/requests is as follows:
-/// - adapters sends 'initialized' event (after the 'initialize' request has returned)
-/// - frontend sends zero or more 'setBreakpoints' requests
-/// - frontend sends one 'setFunctionBreakpoints' request (if capability 'supportsFunctionBreakpoints' is true)
-/// - frontend sends a 'setExceptionBreakpoints' request if one or more 'exceptionBreakpointFilters' have been defined (or if 'supportsConfigurationDoneRequest' is not defined or false)
-/// - frontend sends other future configuration requests
-/// - frontend sends one 'configurationDone' request to indicate the end of the configuration.
-class InitializedEvent extends Event {
-
-  static InitializedEvent fromJson(Map<String, Object?> obj) => InitializedEvent.fromMap(obj);
-
-  InitializedEvent({
-    Object? body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'initialized', 
-    body: body, 
-  );
-
-  InitializedEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// Properties of a breakpoint passed to the setInstructionBreakpoints request
 class InstructionBreakpoint {
   /// An optional expression for conditional breakpoints.
@@ -2970,51 +2770,6 @@ class InvalidatedAreas {
   };
 }
 
-/// This event signals that some state in the debug adapter has changed and
-/// requires that the client needs to re-render the data snapshot previously
-/// requested.
-/// Debug adapters do not have to emit this event for runtime changes like
-/// stopped or thread events because in that case the client refetches the new
-/// state anyway. But the event can be used for example to refresh the UI after
-/// rendering formatting has changed in the debug adapter.
-/// This event should only be sent if the debug adapter has received a value
-/// true for the 'supportsInvalidatedEvent' capability of the 'initialize'
-/// request.
-class InvalidatedEvent extends Event {
-
-  static InvalidatedEvent fromJson(Map<String, Object?> obj) => InvalidatedEvent.fromMap(obj);
-
-  InvalidatedEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'invalidated', 
-    body: body, 
-  );
-
-  InvalidatedEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// Arguments for 'launch' request. Additional attributes are implementation
 /// specific.
 class LaunchRequestArguments extends RequestArguments {
@@ -3083,43 +2838,6 @@ class LaunchResponse extends Response {
       return false;
     }
     return Response.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
-/// The event indicates that some source has been added, changed, or removed
-/// from the set of all loaded sources.
-class LoadedSourceEvent extends Event {
-
-  static LoadedSourceEvent fromJson(Map<String, Object?> obj) => LoadedSourceEvent.fromMap(obj);
-
-  LoadedSourceEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'loadedSource', 
-    body: body, 
-  );
-
-  LoadedSourceEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
   }
 
   @override
@@ -3392,42 +3110,6 @@ class Module {
   };
 }
 
-/// The event indicates that some information about a module has changed.
-class ModuleEvent extends Event {
-
-  static ModuleEvent fromJson(Map<String, Object?> obj) => ModuleEvent.fromMap(obj);
-
-  ModuleEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'module', 
-    body: body, 
-  );
-
-  ModuleEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// Arguments for 'modules' request.
 class ModulesArguments extends RequestArguments {
   /// The number of modules to return. If moduleCount is not specified or 0, all
@@ -3612,42 +3294,6 @@ class NextResponse extends Response {
   };
 }
 
-/// The event indicates that the target has produced some output.
-class OutputEvent extends Event {
-
-  static OutputEvent fromJson(Map<String, Object?> obj) => OutputEvent.fromMap(obj);
-
-  OutputEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'output', 
-    body: body, 
-  );
-
-  OutputEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// Arguments for 'pause' request.
 class PauseArguments extends RequestArguments {
   /// Pause execution for this thread.
@@ -3707,165 +3353,6 @@ class PauseResponse extends Response {
       return false;
     }
     return Response.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
-/// The event indicates that the debugger has begun debugging a new process.
-/// Either one that it has launched, or one that it has attached to.
-class ProcessEvent extends Event {
-
-  static ProcessEvent fromJson(Map<String, Object?> obj) => ProcessEvent.fromMap(obj);
-
-  ProcessEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'process', 
-    body: body, 
-  );
-
-  ProcessEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
-/// The event signals the end of the progress reporting with an optional final
-/// message.
-/// This event should only be sent if the client has passed the value true for
-/// the 'supportsProgressReporting' capability of the 'initialize' request.
-class ProgressEndEvent extends Event {
-
-  static ProgressEndEvent fromJson(Map<String, Object?> obj) => ProgressEndEvent.fromMap(obj);
-
-  ProgressEndEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'progressEnd', 
-    body: body, 
-  );
-
-  ProgressEndEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
-/// The event signals that a long running operation is about to start and
-/// provides additional information for the client to set up a corresponding
-/// progress and cancellation UI.
-/// The client is free to delay the showing of the UI in order to reduce
-/// flicker.
-/// This event should only be sent if the client has passed the value true for
-/// the 'supportsProgressReporting' capability of the 'initialize' request.
-class ProgressStartEvent extends Event {
-
-  static ProgressStartEvent fromJson(Map<String, Object?> obj) => ProgressStartEvent.fromMap(obj);
-
-  ProgressStartEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'progressStart', 
-    body: body, 
-  );
-
-  ProgressStartEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
-/// The event signals that the progress reporting needs to updated with a new
-/// message and/or percentage.
-/// The client does not have to update the UI immediately, but the clients needs
-/// to keep track of the message and/or percentage values.
-/// This event should only be sent if the client has passed the value true for
-/// the 'supportsProgressReporting' capability of the 'initialize' request.
-class ProgressUpdateEvent extends Event {
-
-  static ProgressUpdateEvent fromJson(Map<String, Object?> obj) => ProgressUpdateEvent.fromMap(obj);
-
-  ProgressUpdateEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'progressUpdate', 
-    body: body, 
-  );
-
-  ProgressUpdateEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
   }
 
   @override
@@ -6128,45 +5615,6 @@ class SteppingGranularity {
   };
 }
 
-/// The event indicates that the execution of the debuggee has stopped due to
-/// some condition.
-/// This can be caused by a break point previously set, a stepping request has
-/// completed, by executing a debugger statement etc.
-class StoppedEvent extends Event {
-
-  static StoppedEvent fromJson(Map<String, Object?> obj) => StoppedEvent.fromMap(obj);
-
-  StoppedEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'stopped', 
-    body: body, 
-  );
-
-  StoppedEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// Arguments for 'terminate' request.
 class TerminateArguments extends RequestArguments {
   /// A value of true indicates that this 'terminate' request is part of a
@@ -6302,43 +5750,6 @@ class TerminateThreadsResponse extends Response {
   };
 }
 
-/// The event indicates that debugging of the debuggee has terminated. This does
-/// **not** mean that the debuggee itself has exited.
-class TerminatedEvent extends Event {
-
-  static TerminatedEvent fromJson(Map<String, Object?> obj) => TerminatedEvent.fromMap(obj);
-
-  TerminatedEvent({
-    Map<String, Object?>? body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'terminated', 
-    body: body, 
-  );
-
-  TerminatedEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>?) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
-  };
-}
-
 /// A Thread
 class Thread {
   /// Unique identifier for the thread.
@@ -6373,42 +5784,6 @@ class Thread {
   Map<String, Object?> toJson() => {
     'id': id, 
     'name': name, 
-  };
-}
-
-/// The event indicates that a thread has started or exited.
-class ThreadEvent extends Event {
-
-  static ThreadEvent fromJson(Map<String, Object?> obj) => ThreadEvent.fromMap(obj);
-
-  ThreadEvent({
-    required Map<String, Object?> body, 
-    required int seq, 
-  }): super(
-    seq: seq, 
-    event: 'thread', 
-    body: body, 
-  );
-
-  ThreadEvent.fromMap(Map<String, Object?> obj):
-    super.fromMap(obj);
-
-  static bool canParse(Object? obj) {
-    if (obj is! Map<String, dynamic>) {
-      return false;
-    }
-    if (obj['body'] is! Map<String, Object?>) {
-      return false;
-    }
-    if (obj['event'] is! String) {
-      return false;
-    }
-    return Event.canParse(obj);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    ...super.toJson(),
   };
 }
 
