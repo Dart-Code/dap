@@ -21,6 +21,8 @@ abstract class DapTestServer {
             // For the client, input/output are reversed.
             LspByteStreamServerChannel(stdout, stdin, logger));
 
+  void kill();
+
   static FutureOr<DapTestServer> forEnvironment() async {
     final inProc = Platform.environment['DAP_EXTERNAL'] != 'true';
 
@@ -34,6 +36,7 @@ abstract class DapTestServer {
 
   static FutureOr<DapTestServer> inProcess(Logger logger) =>
       _InProcess.create(logger);
+
   static FutureOr<DapTestServer> outOfProcess(Logger logger) =>
       _OutOfProcess.create(logger);
 }
@@ -45,6 +48,9 @@ class _InProcess extends DapTestServer {
   _InProcess._(
       StreamSink<List<int>> stdin, Stream<List<int>> stdout, this._adapter)
       : super._(stdin, stdout, _adapter.logger);
+
+  @override
+  void kill() {}
 
   static FutureOr<_InProcess> create(Logger logger) {
     final stdinController = StreamController<List<int>>();
@@ -68,6 +74,9 @@ class _OutOfProcess extends DapTestServer {
   final Process _process;
   _OutOfProcess._(this._process, Logger logger)
       : super._(_process.stdin, _process.stdout, logger);
+
+  @override
+  void kill() => _process.kill(ProcessSignal.sigkill);
 
   static Future<_OutOfProcess> create(Logger logger) async {
     final packageLibDirectory =

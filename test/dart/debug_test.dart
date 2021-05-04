@@ -1,8 +1,3 @@
-import 'dart:io';
-
-import 'package:dap/src/adapters/dart.dart';
-import 'package:dap/src/debug_adapter_protocol_generated.dart';
-import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
 import '../server.dart';
@@ -12,30 +7,14 @@ void main() {
   test('Server runs a simple script in debug mode', () async {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
-    final outputEventsFuture = client
-        .events('output')
-        .map((e) => OutputEventBody.fromJson(e.body as Map<String, Object?>))
-        .toList();
+    final outputEventsFuture = client.outputEvents.toList();
 
-    // Initialize.
-    await Future.wait([
-      client.event('initialized'),
-      client.sendRequest('initialize', initArgs),
-    ]);
-    await client.sendRequest('configurationDone', ConfigurationDoneArguments());
+    await client.initialize();
 
     // Launch script and wait for termination.
     await Future.wait([
       client.event('terminated'),
-      client.sendRequest(
-        'launch',
-        DartLaunchRequestArguments(
-          program: 'hello_world.dart',
-          cwd: await testApplicationsDirectory,
-          args: ['one', 'two'],
-          dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
-        ),
-      )
+      client.launch('hello_world.dart', args: ['one', 'two'])
     ]);
 
     // Check expected output events were recieved.

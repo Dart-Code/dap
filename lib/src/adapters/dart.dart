@@ -9,8 +9,8 @@ import 'package:dap/src/logging.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
-import 'package:vm_service/vm_service.dart';
-import 'package:vm_service/vm_service_io.dart';
+import 'package:vm_service/vm_service.dart' as vm;
+import 'package:vm_service/vm_service_io.dart' as vm;
 
 class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   late IsolateManager _isolateManager;
@@ -19,7 +19,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   File? _vmServiceInfoFile;
   StreamSubscription<FileSystemEvent>? _vmServiceInfoFileWatcher;
   final _tmpDir = Directory.systemTemp;
-  VmServiceInterface? _vmService;
+  vm.VmServiceInterface? _vmService;
   // We normally track the pid from the VM service to terminate the VM
   // afterwards (since [_process] may be a shell), but for `flutter run` it's
   // a remote PID and therefore doesn't make sense to try and terminate.
@@ -31,14 +31,14 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   final parseLaunchArgs = DartLaunchRequestArguments.fromJson;
 
   // TODO(dantup): Ensure this is cleaned up!
-  final _subscriptions = <StreamSubscription<Event>>[];
+  final _subscriptions = <StreamSubscription<vm.Event>>[];
 
   DartDebugAdapter(LspByteStreamServerChannel channel, Logger logger)
       : super(channel, logger) {
     _isolateManager = IsolateManager(this);
   }
 
-  Future<void> attachRequest(
+  FutureOr<void> attachRequest(
     Request request,
     AttachRequestArguments? args,
     void Function(void) sendResponse,
@@ -49,7 +49,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  Future<void> configurationDoneRequest(
+  FutureOr<void> configurationDoneRequest(
       Request request,
       ConfigurationDoneArguments? args,
       void Function(void) sendResponse) async {
@@ -58,19 +58,39 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  Future<void> disconnectRequest(Request request, DisconnectArguments? args,
+  FutureOr<void> disconnectRequest(Request request, DisconnectArguments? args,
       void Function(void) sendResponse) async {
-    // TODO(dantup): implement disconnectRequest
-    throw UnimplementedError();
+    // Disconnect is a forceful kill. Clients should first call terminateRequest
+    // which will try to gracefully terminate first.
+    // TODO(dantup): In Dart-Code DAP, we try again with SIGINT and wait for
+    // 2s before killing.
+    _process?.kill(ProcessSignal.sigkill);
+    sendResponse(null);
   }
 
   @override
-  Future<void> initializeRequest(
+  FutureOr<void> initializeRequest(
       Request request,
       InitializeRequestArguments? args,
       void Function(Capabilities) sendResponse) async {
     sendResponse(Capabilities(
+      // TODO(dantup): All of these...
+      // exceptionBreakpointFilters: [
+      //   ExceptionBreakpointsFilter(
+      //       filter: 'All', label: 'All Exceptions', defaultValue: false),
+      //   ExceptionBreakpointsFilter(
+      //       filter: 'Unhandled',
+      //       label: 'Uncaught Exceptions',
+      //       defaultValue: true),
+      // ],
+      // supportsClipboardContext: true,
+      // supportsConditionalBreakpoints: true,
       supportsConfigurationDoneRequest: true,
+      supportsDelayedStackTraceLoading: true,
+      // supportsEvaluateForHovers: true,
+      // supportsLogPoints: true,
+      // supportsRestartFrame: true,
+      supportsTerminateRequest: true,
     ));
 
     // This must only be sent AFTER the response!
@@ -78,7 +98,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  Future<void> launchRequest(
+  FutureOr<void> launchRequest(
     Request request,
     DartLaunchRequestArguments? args,
     void Function(void) sendResponse,
@@ -101,7 +121,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     final vmPath = path.join(args.dartSdkPath, 'bin/dart');
     final vmArgs = [
       if (_debug) ...[
-        '--enable-vm-service=${args.vmServicePort}',
+        '--enable-vm-service=${args.vmServicePort ?? 0}',
         '--pause_isolates_on_start=true',
       ],
       if (_debug && vmServiceInfoFile != null) ...[
@@ -142,8 +162,39 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     sendResponse(null);
   }
 
-  FutureOr<void> resumeIsolate(IsolateRef isolateRef) =>
-      _vmService?.resume(isolateRef.id!);
+  @override
+  FutureOr<void> setBreakpoints(Request request, SetBreakpointsArguments? args,
+      void Function(SetBreakpointsResponseBody) sendResponse) async {
+    final path = args?.source.path;
+    final name = args?.source.name;
+    final uri = path != null ? Uri.file(path).toString() : name!;
+    final breakpoints = args?.breakpoints ?? [];
+
+    await _isolateManager.setBreakpoints(uri, breakpoints);
+
+    // TODO(dantup): Handle breakpoint resolution rather than pretending all
+    // breakpoints are verified immediately.
+    sendResponse(SetBreakpointsResponseBody(
+      breakpoints: breakpoints.map((e) => Breakpoint(verified: true)).toList(),
+    ));
+  }
+
+  @override
+  FutureOr<void> terminateRequest(Request request, TerminateArguments? args,
+      void Function(void) sendResponse) async {
+    // Terminate is a graceful request to terminate.
+    // TODO(dantup): Process additionalPidsToTerminate.
+    // TODO(dantup): Remove pause-on-exceptions, breakpoints and resume all threads?
+    _process?.kill(ProcessSignal.sigint);
+    await _process?.exitCode;
+    sendResponse(null);
+  }
+
+  @override
+  FutureOr<void> threadsRequest(Request request, void args,
+      void Function(ThreadsResponseBody) sendResponse) {
+    sendResponse(ThreadsResponseBody(threads: []));
+  }
 
   Future<void> _connectDebugger(Uri uri) async {
     uri = _normaliseVmServiceUri(uri);
@@ -153,16 +204,16 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
           category: 'console', output: 'Connecting to VM Service at $uri$eol'),
     );
     // TODO(dantup): Support logging of VM traffic.
-    final vmService = await vmServiceConnectUri(
+    final vmService = await _vmServiceConnectUri(
       uri.toString(),
       log: VmLogger(logger),
     );
     logger.log('Connected to debugger at $uri!');
-    _vmService = vmService;
-
     // TODO(dantup): VS Code currently depends on a custom dart.debuggerUris
     // event to notify it of VM Services that become available. If this is still
     // required, it will need implementing here.
+    _vmService = vmService;
+
     _subscriptions.addAll([
       vmService.onIsolateEvent.listen(_handleIsolateEvent),
       vmService.onExtensionEvent.listen(_handleExtensionEvent),
@@ -172,9 +223,18 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       vmService.onStdoutEvent.listen(_handleStdoutEvent),
       vmService.onStderrEvent.listen(_handleStderrEvent),
     ]);
+    await Future.wait([
+      vmService.streamListen(vm.EventStreams.kIsolate),
+      vmService.streamListen(vm.EventStreams.kExtension),
+      vmService.streamListen(vm.EventStreams.kDebug),
+      vmService.streamListen(vm.EventStreams.kService),
+      vmService.streamListen(vm.EventStreams.kLogging),
+      vmService.streamListen(vm.EventStreams.kStdout),
+      vmService.streamListen(vm.EventStreams.kStderr),
+    ]);
 
-    final vm = await vmService.getVM();
-    logger.log('Connected to ${vm.name} on ${vm.operatingSystem}');
+    final vmInfo = await vmService.getVM();
+    logger.log('Connected to ${vmInfo.name} on ${vmInfo.operatingSystem}');
 
     // If we own this process (we launched it, didn't attach), then we should
     // keep a ref to this process to terminate when we quit. This avoids issues
@@ -182,7 +242,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     // signal isn't passed on correctly.
     // See: https://github.com/Dart-Code/Dart-Code/issues/907
     if (_allowTerminatingVmServicePid && _process != null) {
-      final pid = vm.pid;
+      final pid = vmInfo.pid;
       if (pid != null) {
         _pidsToTerminate.add(pid);
       }
@@ -190,24 +250,31 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
 
     // Process any isolates that may have been created before the streams above
     // were set up.
-    final existingIsolateRefs = vm.isolates;
+    final existingIsolateRefs = vmInfo.isolates;
     final existingIsolates = existingIsolateRefs != null
         ? await Future.wait(existingIsolateRefs
             .map((isolateRef) => isolateRef.id)
             .whereNotNull()
             .map(vmService.getIsolate))
-        : <Isolate>[];
+        : <vm.Isolate>[];
     await Future.wait(existingIsolates.map((isolate) async {
-      await _isolateManager.registerThread(isolate);
+      // Isolates may have the "None" pauseEvent kind at startup, so infer it
+      // from the runnable field.
+      final pauseEventKind = isolate.runnable ?? false
+          ? vm.EventKind.kIsolateRunnable
+          : vm.EventKind.kIsolateStart;
+      await _isolateManager.registerIsolate(isolate, pauseEventKind);
       if (isolate.pauseEvent?.kind?.startsWith('Pause') ?? false) {
         await _isolateManager.handleEvent(isolate.pauseEvent!);
-      } else {
-        await resumeIsolate(isolate);
+      } else if (isolate.runnable == true) {
+        await _isolateManager.resumeIsolate(isolate);
       }
     }));
   }
 
-  void _handleDebugEvent(Event event) {}
+  void _handleDebugEvent(vm.Event event) {
+    _isolateManager.handleEvent(event);
+  }
 
   void _handleExitCode(int code) {
     final codeSuffix = code == 0 ? '' : ' ($code)';
@@ -219,29 +286,29 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     sendEvent(TerminatedEventBody());
   }
 
-  void _handleExtensionEvent(Event event) {}
+  void _handleExtensionEvent(vm.Event event) {}
 
-  void _handleIsolateEvent(Event event) {
+  void _handleIsolateEvent(vm.Event event) {
     _isolateManager.handleEvent(event);
   }
 
-  void _handleLoggingEvent(Event event) {}
+  void _handleLoggingEvent(vm.Event event) {}
 
-  void _handleServiceEvent(Event event) {}
+  void _handleServiceEvent(vm.Event event) {}
 
   void _handleStderr(List<int> data) {
     // TODO(dantup): Is it safe to assume UTF8?
     sendEvent(OutputEventBody(category: 'stderr', output: utf8.decode(data)));
   }
 
-  void _handleStderrEvent(Event event) {}
+  void _handleStderrEvent(vm.Event event) {}
 
   void _handleStdout(List<int> data) {
     // TODO(dantup): Is it safe to assume UTF8?
     sendEvent(OutputEventBody(category: 'stdout', output: utf8.decode(data)));
   }
 
-  void _handleStdoutEvent(Event event) {}
+  void _handleStdoutEvent(vm.Event event) {}
 
   void _handleVmServiceInfoEvent(FileSystemEvent event) {
     try {
@@ -269,6 +336,34 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
         // Switch http -> ws, https -> wss
         scheme: scheme,
         path: path);
+  }
+
+  /// Connect to the given uri and return a new [VmService] instance.
+  ///
+  /// Copied from package:vm_service to allow logging.
+  Future<vm.VmService> _vmServiceConnectUri(String wsUri, {vm.Log? log}) async {
+    final socket = await WebSocket.connect(wsUri);
+    final controller = StreamController();
+    final streamClosedCompleter = Completer();
+
+    socket.listen(
+      (data) {
+        logger.log('<== [VM] $data');
+        controller.add(data);
+      },
+      onDone: () => streamClosedCompleter.complete(),
+    );
+
+    return vm.VmService(
+      controller.stream,
+      (String message) {
+        logger.log('==> [VM] $message');
+        socket.add(message);
+      },
+      log: log,
+      disposeHandler: () => socket.close(),
+      streamClosed: streamClosedCompleter.future,
+    );
   }
 }
 
@@ -324,9 +419,12 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
 }
 
 class IsolateInfo {
-  final IsolateRef isolate;
+  final vm.IsolateRef isolate;
   final int threadNumber;
   var runnable = false;
+  var atAsyncSuspension = false;
+  var paused = false;
+  vm.Event? pauseEvent;
 
   IsolateInfo(this.threadNumber, this.isolate);
 }
@@ -336,28 +434,36 @@ class IsolateManager {
   final Map<String, IsolateInfo> _isolatesByIsolateId = {};
   final Map<int, IsolateInfo> _isolatesByThreadId = {};
   int _nextThreadNumber = 1;
+  final Map<String, List<SourceBreakpoint>> _clientBreakpointsByUri = {};
+  final Map<String, Map<String, List<vm.Breakpoint>>>
+      _vmBreakpointsByIsolateIdAndUri = {};
 
   IsolateManager(this._adapter);
 
-  FutureOr<void> handleEvent(Event event) async {
+  /// Handles Isolate and Debug events
+  FutureOr<void> handleEvent(vm.Event event) async {
     if (event.isolate?.id == null) {
       // TODO(dantup): Log?
       return;
     }
 
-    if (event.kind == EventKind.kIsolateStart ||
-        event.kind == EventKind.kIsolateRunnable) {
+    final eventKind = event.kind;
+    if (eventKind == vm.EventKind.kIsolateStart ||
+        eventKind == vm.EventKind.kIsolateRunnable) {
       // TODO(dantup): Veryify this case is sound for these events
-      await registerThread(event.isolate as Isolate);
-      _adapter.resumeIsolate(event.isolate!);
-    } else if (event.kind == EventKind.kIsolateExit) {
+      await registerIsolate(event.isolate!, eventKind!);
+      resumeIsolate(event.isolate!);
+    } else if (eventKind == vm.EventKind.kIsolateExit) {
       await _handleExit(event);
-    } else if (event.kind?.startsWith('Pause') ?? false) {
+    } else if (eventKind?.startsWith('Pause') ?? false) {
       await _handlePause(event);
+    } else if (eventKind == vm.EventKind.kResume) {
+      await _handleResumed(event);
     }
   }
 
-  FutureOr<void> registerThread(Isolate isolate) async {
+  FutureOr<void> registerIsolate(
+      vm.IsolateRef isolate, String eventKind) async {
     final info = _isolatesByIsolateId.putIfAbsent(isolate.id!, () {
       final info = IsolateInfo(_nextThreadNumber++, isolate);
       _isolatesByThreadId[info.threadNumber] = info;
@@ -368,32 +474,125 @@ class IsolateManager {
 
     // If it's just become runnable (IsolateRunnable), then set up breakpoints
     // and exception pause mode.
-    if (isolate.runnable == true && !info.runnable) {
+    if (eventKind == vm.EventKind.kIsolateRunnable && !info.runnable) {
       info.runnable = true;
-      await _configureThread();
+      await _configureIsolate(isolate);
     }
   }
 
-  FutureOr<void> _configureThread() async {
-    // TODO(dantup): Exception pause mode
-    // TODO(dantup): setLibraryDebuggable
-    // TODO(dantup): Breakpoints
+  FutureOr<void> resumeIsolate(vm.IsolateRef isolateRef) =>
+      _adapter._vmService?.resume(isolateRef.id!);
+
+  FutureOr<void> setBreakpoints(
+      String uri, List<SourceBreakpoint> breakpoints) async {
+    // Track the breakpoints to get sent to any new isolates that start.
+    _clientBreakpointsByUri[uri] = breakpoints;
+
+    // Send the breakpoints to all existing threads.
+    await Future.wait(_isolatesByThreadId.values
+        .map((isolate) => _sendBreakpoints(isolate.isolate, uri: uri)));
   }
 
-  FutureOr<void> _handleExit(Event event) {}
+  FutureOr<void> _configureIsolate(vm.IsolateRef isolate) async {
+    // TODO(dantup): Exception pause mode
+    // TODO(dantup): setLibraryDebuggable
+    await _sendBreakpoints(isolate);
+  }
 
-  FutureOr<void> _handlePause(Event event) {
+  FutureOr<void> _handleExit(vm.Event event) {
+    final isolate = event.isolate!;
+    final isolateId = isolate.id!;
+    final thread = _isolatesByIsolateId[isolateId];
+    if (thread != null) {
+      _adapter.sendEvent(
+          ThreadEventBody(reason: 'exited', threadId: thread.threadNumber));
+      _isolatesByIsolateId.remove(isolateId);
+      _isolatesByThreadId.remove(thread.threadNumber);
+    }
+  }
+
+  FutureOr<void> _handlePause(vm.Event event) {
+    final eventKind = event.kind;
+    final isolate = event.isolate!;
     // For PausePostRequest we need to re-send all breakpoints; this happens
     // after a hot restart.
-    if (event.kind == EventKind.kPausePostRequest) {
-      _configureThread();
-      _adapter.resumeIsolate(event.isolate!);
-    } else if (event.kind == EventKind.kPauseStart) {
-      _adapter.resumeIsolate(event.isolate!);
+    if (eventKind == vm.EventKind.kPausePostRequest) {
+      _configureIsolate(isolate);
+      resumeIsolate(isolate);
+    } else if (eventKind == vm.EventKind.kPauseStart) {
+      resumeIsolate(isolate);
     } else {
       // PauseStart, PauseExit, PauseBreakpoint, PauseInterrupted, PauseException
+      var reason = 'pause';
 
-      // TODO(dantup): !
+      if (eventKind == vm.EventKind.kPauseBreakpoint &&
+          (event.pauseBreakpoints?.isNotEmpty ?? false)) {
+        reason = 'breakpoint';
+      } else if (eventKind == vm.EventKind.kPauseBreakpoint) {
+        reason = 'step';
+      } else if (eventKind == vm.EventKind.kPauseException) {
+        reason = 'exception';
+      }
+
+      final thread = _isolatesByIsolateId[isolate.id!];
+      if (thread != null) {
+        thread.atAsyncSuspension = event.atAsyncSuspension ?? false;
+        thread.paused = true;
+        thread.pauseEvent = event;
+        // TODO(dantup): Handle exceptions
+        // final exception = event.exception;
+        // if (exception != null) {
+        //   (exception as InstanceWithEvaluateName).evaluateName = "$e";
+        //   this.exceptionReference = this.storeData(exception);
+        // }
+
+        _adapter.sendEvent(
+            StoppedEventBody(reason: reason, threadId: thread.threadNumber));
+      }
+    }
+  }
+
+  FutureOr<void> _handleResumed(vm.Event event) {
+    final isolate = event.isolate!;
+    final thread = _isolatesByIsolateId[isolate.id!];
+    if (thread != null) {
+      thread.paused = false;
+      thread.pauseEvent = null;
+      // TODO(dantup): Handle exceptions
+      // thread.exceptionReference = 0;
+    }
+  }
+
+  Future<void> _sendBreakpoints(vm.IsolateRef isolate, {String? uri}) async {
+    final service = _adapter._vmService;
+    if (service == null) {
+      return;
+    }
+
+    final isolateId = isolate.id!;
+
+    // If we were passed a single URI, we should send breakpoints only for that
+    // (this means the request came from the client), otherwise we should send
+    // all of them (because this is a new/restarting isolate).
+    final uris = uri != null ? [uri] : _clientBreakpointsByUri.keys;
+
+    for (final uri in uris) {
+      // Clear existing breakpoints.
+      final existingBreakpointsForIsolate =
+          _vmBreakpointsByIsolateIdAndUri.putIfAbsent(isolateId, () => {});
+      final existingBreakpointsForIsolateAndUri =
+          existingBreakpointsForIsolate.putIfAbsent(uri, () => []);
+      await Future.forEach<vm.Breakpoint>(existingBreakpointsForIsolateAndUri,
+          (bp) => service.removeBreakpoint(isolateId, bp.id!));
+
+      // Set new breakpoints.
+      final newBreakpoints = _clientBreakpointsByUri[uri] ?? const [];
+      await Future.forEach<SourceBreakpoint>(newBreakpoints, (bp) async {
+        final vmBp = await service.addBreakpointWithScriptUri(
+            isolateId, uri, bp.line,
+            column: bp.column);
+        existingBreakpointsForIsolateAndUri.add(vmBp);
+      });
     }
   }
 }

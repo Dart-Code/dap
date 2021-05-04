@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dap/src/debug_adapter_protocol.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:dap/src/logging.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
+
+void _voidFromJson(Map<String, Object?> obj) => null;
 
 /// An implementation of [DebugAdapter] that provides some common
 /// functionality to communicate over a [LspByteStreamServerChannel].
@@ -43,15 +46,15 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
 
   TLaunchArgs Function(Map<String, Object?>) get parseLaunchArgs;
 
-  Future<void> configurationDoneRequest(Request request,
+  FutureOr<void> configurationDoneRequest(Request request,
       ConfigurationDoneArguments? args, void Function(void) sendResponse);
 
-  Future<void> disconnectRequest(Request request, DisconnectArguments? args,
+  FutureOr<void> disconnectRequest(Request request, DisconnectArguments? args,
       void Function(void) sendResponse);
 
-  Future<void> handle<TArg, TResp>(
+  FutureOr<void> handle<TArg, TResp>(
     Request request,
-    Future<void> Function(Request, TArg?, void Function(TResp)) handler,
+    FutureOr<void> Function(Request, TArg?, void Function(TResp)) handler,
     TArg Function(Map<String, Object?>) fromJson,
   ) async {
     final args = request.arguments != null
@@ -83,12 +86,12 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
         'sendResponse was not called in ${request.command}');
   }
 
-  Future<void> initializeRequest(
+  FutureOr<void> initializeRequest(
       Request request,
       InitializeRequestArguments? args,
       void Function(Capabilities) sendResponse);
 
-  Future<void> launchRequest(
+  FutureOr<void> launchRequest(
       Request request, TLaunchArgs? args, void Function(void) sendResponse);
 
   void sendEvent(EventBody body) {
@@ -109,16 +112,31 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
     _channel.sendRequest(request);
   }
 
+  FutureOr<void> setBreakpoints(Request request, SetBreakpointsArguments? args,
+      void Function(SetBreakpointsResponseBody) sendResponse);
+
+  FutureOr<void> terminateRequest(Request request, TerminateArguments? args,
+      void Function(void) sendResponse);
+
+  FutureOr<void> threadsRequest(Request request, void args,
+      void Function(ThreadsResponseBody) sendResponse);
+
   void _handleRequest(Request request) {
     if (request.command == 'initialize') {
       handle(request, initializeRequest, InitializeRequestArguments.fromJson);
     } else if (request.command == 'launch') {
       handle(request, launchRequest, parseLaunchArgs);
+    } else if (request.command == 'terminate') {
+      handle(request, terminateRequest, TerminateArguments.fromJson);
     } else if (request.command == 'disconnect') {
       handle(request, disconnectRequest, DisconnectArguments.fromJson);
     } else if (request.command == 'configurationDone') {
       handle(request, configurationDoneRequest,
           ConfigurationDoneArguments.fromJson);
+    } else if (request.command == 'setBreakpoints') {
+      handle(request, setBreakpoints, SetBreakpointsArguments.fromJson);
+    } else if (request.command == 'threads') {
+      handle(request, threadsRequest, _voidFromJson);
     } else {
       throw Exception('Unknown command: ${request.command}');
     }

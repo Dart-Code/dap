@@ -2,14 +2,13 @@ import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:test/test.dart';
 
 import '../server.dart';
-import '../test_utils.dart';
 
 void main() {
   test('Server responds to initializeRequest', () async {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
 
-    final response = await client.sendRequest('initialize', initArgs);
+    final response = await client.initialize();
 
     expect(response.success, isTrue);
     expect(response.command, equals('initialize'));
@@ -23,7 +22,7 @@ void main() {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
 
-    final response = await client.sendRequest('notValid', initArgs);
+    final response = await client.sendRequest('notValid', null);
     expect(response.success, isFalse);
     expect(response.command, equals('notValid'));
     expect(response.message, contains('Unknown command: notValid'));
@@ -39,24 +38,13 @@ void main() {
     final messages = <ProtocolMessage>[];
     await Future.wait([
       client.event('initialized').then(messages.add),
-      client.sendRequest('initialize', initArgs).then(messages.add),
+      client
+          .sendRequest(
+              'initialize', InitializeRequestArguments(adapterID: 'test'))
+          .then(messages.add),
     ]);
 
     expect(messages[0], TypeMatcher<Response>());
     expect(messages[1], TypeMatcher<Event>());
-  });
-
-  test('Server responds to configurationDoneRequest', () async {
-    final da = await DapTestServer.forEnvironment();
-    final client = da.client;
-
-    await Future.wait([
-      client.event('initialized'),
-      client.sendRequest('initialize', initArgs),
-    ]);
-
-    final response = await client.sendRequest(
-        'configurationDone', ConfigurationDoneArguments());
-    expect(response.success, isTrue);
   });
 }

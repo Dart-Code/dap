@@ -64,7 +64,7 @@ class LspByteStreamServerChannel {
     if (_closed.isCompleted) {
       return;
     }
-    _logger.log('DAP: <== $data');
+    _logger.log('<== [DAP] $data');
     try {
       final Map<String, Object?> json = jsonDecode(data);
       final type = json['type'] as String;
@@ -99,7 +99,7 @@ class LspByteStreamServerChannel {
     _write(asciiEncodedHeader);
     _write(utf8EncodedBody);
 
-    _logger.log('DAP: ==> $jsonEncodedBody');
+    _logger.log('==> [DAP] $jsonEncodedBody');
   }
 
   void _sendParseError() {
