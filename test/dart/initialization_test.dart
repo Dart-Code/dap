@@ -42,7 +42,7 @@ void main() {
           .sendRequest(
               'initialize', InitializeRequestArguments(adapterID: 'test'))
           .then(messages.add),
-    ]);
+    ], eagerError: true);
 
     expect(messages[0], TypeMatcher<Response>());
     expect(messages[1], TypeMatcher<Event>());

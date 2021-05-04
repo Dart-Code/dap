@@ -22,7 +22,7 @@ void main() {
       client.event('initialized'),
       client.sendRequest(
           'initialize', InitializeRequestArguments(adapterID: 'test')),
-    ]);
+    ], eagerError: true);
     await client.sendRequest('configurationDone', ConfigurationDoneArguments());
 
     // Launch script and wait for termination.
@@ -38,7 +38,7 @@ void main() {
           dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
         ),
       )
-    ]);
+    ], eagerError: true);
 
     // Check expected output events were recieved.
     final output = (await outputEvents).map((e) => e.output).join();

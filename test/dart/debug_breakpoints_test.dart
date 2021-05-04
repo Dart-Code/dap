@@ -17,6 +17,7 @@ void main() {
     await client.disconnect().then((_) => null).catchError((e, s) {});
     da.kill();
   });
+
   test('Server stops at a simple line breakpoint', () async {
     final testFile =
         File(path.join(await testApplicationsDirectory, 'hello_world.dart'));
@@ -36,6 +37,35 @@ void main() {
     await client.launch(testFile.path);
     final stop = await stoppedEvent;
 
+    // TODO(dantup): Check location.
     expect(stop.reason, equals('breakpoint'));
+  });
+
+  test('Server stops at a simple line breakpoint and can be resumed', () async {
+    final testFile =
+        File(path.join(await testApplicationsDirectory, 'hello_world.dart'));
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final stoppedEvent = client.stoppedEvents.first;
+
+    await client.initialize();
+    await client.sendRequest(
+      'setBreakpoints',
+      SetBreakpointsArguments(
+          source: Source(path: testFile.path),
+          breakpoints: [
+            SourceBreakpoint(line: lineWith(testFile, '// BREAKPOINT1'))
+          ]),
+    );
+    await client.launch(testFile.path);
+    final stop = await stoppedEvent;
+
+    expect(stop.reason, equals('breakpoint'));
+
+    // Resume and expect termination (as the script will get to the end).
+    await Future.wait([
+      client.event('terminated'),
+      client.continue_(stop.threadId!),
+    ], eagerError: true);
   });
 }

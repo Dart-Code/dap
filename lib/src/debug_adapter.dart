@@ -49,6 +49,9 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   FutureOr<void> configurationDoneRequest(Request request,
       ConfigurationDoneArguments? args, void Function(void) sendResponse);
 
+  FutureOr<void> continueRequest(Request request, ContinueArguments? args,
+      void Function(void) sendResponse);
+
   FutureOr<void> disconnectRequest(Request request, DisconnectArguments? args,
       void Function(void) sendResponse);
 
@@ -94,6 +97,9 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   FutureOr<void> launchRequest(
       Request request, TLaunchArgs? args, void Function(void) sendResponse);
 
+  FutureOr<void> nextRequest(
+      Request request, NextArguments? args, void Function(void) sendResponse);
+
   void sendEvent(EventBody body) {
     final event = Event(
       seq: _sequence++,
@@ -114,6 +120,12 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
 
   FutureOr<void> setBreakpoints(Request request, SetBreakpointsArguments? args,
       void Function(SetBreakpointsResponseBody) sendResponse);
+
+  FutureOr<void> stepInRequest(
+      Request request, StepInArguments? args, void Function(void) sendResponse);
+
+  FutureOr<void> stepOutRequest(Request request, StepOutArguments? args,
+      void Function(void) sendResponse);
 
   FutureOr<void> terminateRequest(Request request, TerminateArguments? args,
       void Function(void) sendResponse);
@@ -137,6 +149,14 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       handle(request, setBreakpoints, SetBreakpointsArguments.fromJson);
     } else if (request.command == 'threads') {
       handle(request, threadsRequest, _voidFromJson);
+    } else if (request.command == 'continue') {
+      handle(request, continueRequest, ContinueArguments.fromJson);
+    } else if (request.command == 'next') {
+      handle(request, nextRequest, NextArguments.fromJson);
+    } else if (request.command == 'stepIn') {
+      handle(request, stepInRequest, StepInArguments.fromJson);
+    } else if (request.command == 'stepOut') {
+      handle(request, stepOutRequest, StepOutArguments.fromJson);
     } else {
       throw Exception('Unknown command: ${request.command}');
     }

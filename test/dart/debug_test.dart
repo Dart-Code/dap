@@ -15,7 +15,7 @@ void main() {
     await Future.wait([
       client.event('terminated'),
       client.launch('hello_world.dart', args: ['one', 'two'])
-    ]);
+    ], eagerError: true);
 
     // Check expected output events were recieved.
     final outputEvents = await outputEventsFuture;

@@ -58,6 +58,13 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
+  FutureOr<void> continueRequest(Request request, ContinueArguments? args,
+      void Function(void) sendResponse) async {
+    await _isolateManager.resumeThread(args!.threadId);
+    sendResponse(null);
+  }
+
+  @override
   FutureOr<void> disconnectRequest(Request request, DisconnectArguments? args,
       void Function(void) sendResponse) async {
     // Disconnect is a forceful kill. Clients should first call terminateRequest
@@ -163,6 +170,13 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
+  FutureOr<void> nextRequest(Request request, NextArguments? args,
+      void Function(void) sendResponse) async {
+    await _isolateManager.resumeThread(args!.threadId, vm.StepOption.kOver);
+    sendResponse(null);
+  }
+
+  @override
   FutureOr<void> setBreakpoints(Request request, SetBreakpointsArguments? args,
       void Function(SetBreakpointsResponseBody) sendResponse) async {
     final path = args?.source.path;
@@ -177,6 +191,20 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     sendResponse(SetBreakpointsResponseBody(
       breakpoints: breakpoints.map((e) => Breakpoint(verified: true)).toList(),
     ));
+  }
+
+  @override
+  FutureOr<void> stepInRequest(Request request, StepInArguments? args,
+      void Function(void) sendResponse) async {
+    await _isolateManager.resumeThread(args!.threadId, vm.StepOption.kInto);
+    sendResponse(null);
+  }
+
+  @override
+  FutureOr<void> stepOutRequest(Request request, StepOutArguments? args,
+      void Function(void) sendResponse) async {
+    await _isolateManager.resumeThread(args!.threadId, vm.StepOption.kOut);
+    sendResponse(null);
   }
 
   @override
@@ -420,13 +448,14 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
 
 class IsolateInfo {
   final vm.IsolateRef isolate;
-  final int threadNumber;
+  final int threadId;
   var runnable = false;
   var atAsyncSuspension = false;
   var paused = false;
+  var hasPendingResume = false;
   vm.Event? pauseEvent;
 
-  IsolateInfo(this.threadNumber, this.isolate);
+  IsolateInfo(this.threadId, this.isolate);
 }
 
 class IsolateManager {
@@ -450,9 +479,7 @@ class IsolateManager {
     final eventKind = event.kind;
     if (eventKind == vm.EventKind.kIsolateStart ||
         eventKind == vm.EventKind.kIsolateRunnable) {
-      // TODO(dantup): Veryify this case is sound for these events
       await registerIsolate(event.isolate!, eventKind!);
-      resumeIsolate(event.isolate!);
     } else if (eventKind == vm.EventKind.kIsolateExit) {
       await _handleExit(event);
     } else if (eventKind?.startsWith('Pause') ?? false) {
@@ -466,9 +493,9 @@ class IsolateManager {
       vm.IsolateRef isolate, String eventKind) async {
     final info = _isolatesByIsolateId.putIfAbsent(isolate.id!, () {
       final info = IsolateInfo(_nextThreadNumber++, isolate);
-      _isolatesByThreadId[info.threadNumber] = info;
+      _isolatesByThreadId[info.threadId] = info;
       _adapter.sendEvent(
-          ThreadEventBody(reason: 'started', threadId: info.threadNumber));
+          ThreadEventBody(reason: 'started', threadId: info.threadId));
       return info;
     });
 
@@ -480,8 +507,42 @@ class IsolateManager {
     }
   }
 
-  FutureOr<void> resumeIsolate(vm.IsolateRef isolateRef) =>
-      _adapter._vmService?.resume(isolateRef.id!);
+  FutureOr<void> resumeIsolate(vm.IsolateRef isolateRef,
+      [String? resumeType]) async {
+    final isolateId = isolateRef.id;
+    if (isolateId == null) {
+      return;
+    }
+
+    final thread = _isolatesByIsolateId[isolateId];
+    if (thread == null) {
+      return;
+    }
+
+    await resumeThread(thread.threadId);
+  }
+
+  Future<void> resumeThread(int threadId, [String? resumeType]) async {
+    final thread = _isolatesByThreadId[threadId];
+    if (thread == null) {
+      throw 'Thread $threadId was not found';
+    }
+
+    if (!thread.paused || thread.hasPendingResume) {
+      return;
+    }
+
+    if (resumeType == vm.StepOption.kOver && thread.atAsyncSuspension) {
+      resumeType = vm.StepOption.kOverAsyncSuspension;
+    }
+
+    thread.hasPendingResume = true;
+    try {
+      await _adapter._vmService?.resume(thread.isolate.id!, step: resumeType);
+    } finally {
+      thread.hasPendingResume = false;
+    }
+  }
 
   FutureOr<void> setBreakpoints(
       String uri, List<SourceBreakpoint> breakpoints) async {
@@ -505,24 +566,34 @@ class IsolateManager {
     final thread = _isolatesByIsolateId[isolateId];
     if (thread != null) {
       _adapter.sendEvent(
-          ThreadEventBody(reason: 'exited', threadId: thread.threadNumber));
+          ThreadEventBody(reason: 'exited', threadId: thread.threadId));
       _isolatesByIsolateId.remove(isolateId);
-      _isolatesByThreadId.remove(thread.threadNumber);
+      _isolatesByThreadId.remove(thread.threadId);
     }
   }
 
-  FutureOr<void> _handlePause(vm.Event event) {
+  FutureOr<void> _handlePause(vm.Event event) async {
     final eventKind = event.kind;
     final isolate = event.isolate!;
+    final thread = _isolatesByIsolateId[isolate.id!];
+
+    if (thread == null) {
+      return;
+    }
+
+    thread.atAsyncSuspension = event.atAsyncSuspension ?? false;
+    thread.paused = true;
+    thread.pauseEvent = event;
+
     // For PausePostRequest we need to re-send all breakpoints; this happens
     // after a hot restart.
     if (eventKind == vm.EventKind.kPausePostRequest) {
       _configureIsolate(isolate);
-      resumeIsolate(isolate);
+      await resumeThread(thread.threadId);
     } else if (eventKind == vm.EventKind.kPauseStart) {
-      resumeIsolate(isolate);
+      await resumeThread(thread.threadId);
     } else {
-      // PauseStart, PauseExit, PauseBreakpoint, PauseInterrupted, PauseException
+      // PauseExit, PauseBreakpoint, PauseInterrupted, PauseException
       var reason = 'pause';
 
       if (eventKind == vm.EventKind.kPauseBreakpoint &&
@@ -534,21 +605,15 @@ class IsolateManager {
         reason = 'exception';
       }
 
-      final thread = _isolatesByIsolateId[isolate.id!];
-      if (thread != null) {
-        thread.atAsyncSuspension = event.atAsyncSuspension ?? false;
-        thread.paused = true;
-        thread.pauseEvent = event;
-        // TODO(dantup): Handle exceptions
-        // final exception = event.exception;
-        // if (exception != null) {
-        //   (exception as InstanceWithEvaluateName).evaluateName = "$e";
-        //   this.exceptionReference = this.storeData(exception);
-        // }
+      // TODO(dantup): Handle exceptions
+      // final exception = event.exception;
+      // if (exception != null) {
+      //   (exception as InstanceWithEvaluateName).evaluateName = "$e";
+      //   this.exceptionReference = this.storeData(exception);
+      // }
 
-        _adapter.sendEvent(
-            StoppedEventBody(reason: reason, threadId: thread.threadNumber));
-      }
+      _adapter.sendEvent(
+          StoppedEventBody(reason: reason, threadId: thread.threadId));
     }
   }
 

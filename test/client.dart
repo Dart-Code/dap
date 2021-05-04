@@ -39,14 +39,6 @@ class DapTestClient {
     });
   }
 
-  /// Returns a Future that completes with the next [event] event.
-  Future<Event> event(String event) =>
-      _eventController.stream.firstWhere((e) => e.event == event);
-
-  /// Returns a stream for [event] events.
-  Stream<Event> events(String event) =>
-      _eventController.stream.where((e) => e.event == event);
-
   /// Returns a stream of [OutputEventBody] events.
   Stream<OutputEventBody> get outputEvents => events('output')
       .map((e) => OutputEventBody.fromJson(e.body as Map<String, Object?>));
@@ -55,15 +47,19 @@ class DapTestClient {
   Stream<StoppedEventBody> get stoppedEvents => events('stopped')
       .map((e) => StoppedEventBody.fromJson(e.body as Map<String, Object?>));
 
-  Future<Response> sendRequest(String command, Object? arguments,
-      {bool allowFailure = false}) {
-    final request =
-        Request(seq: _seq++, command: command, arguments: arguments);
-    final completer = Completer<Response>();
-    _requestCompleters[request.seq] = completer;
-    _client.sendRequest(request);
-    return completer.future.timeout(_requestTimeout);
-  }
+  Future<Response> continue_(int threadId) =>
+      sendRequest('continue', ContinueArguments(threadId: threadId));
+
+  Future<Response> disconnect() =>
+      sendRequest('disconnect', DisconnectArguments());
+
+  /// Returns a Future that completes with the next [event] event.
+  Future<Event> event(String event) =>
+      _eventController.stream.firstWhere((e) => e.event == event);
+
+  /// Returns a stream for [event] events.
+  Stream<Event> events(String event) =>
+      _eventController.stream.where((e) => e.event == event);
 
   Future<Response> initialize() async {
     final responses = await Future.wait([
@@ -73,12 +69,6 @@ class DapTestClient {
     await sendRequest('configurationDone', ConfigurationDoneArguments());
     return responses[1] as Response; // Return the initialize response.
   }
-
-  Future<Response> terminate() =>
-      sendRequest('terminate', TerminateArguments());
-
-  Future<Response> disconnect() =>
-      sendRequest('disconnect', DisconnectArguments());
 
   Future<void> launch(String program,
       {List<String>? args, FutureOr<String>? cwd}) async {
@@ -92,4 +82,26 @@ class DapTestClient {
       ),
     );
   }
+
+  Future<Response> next(int threadId) =>
+      sendRequest('next', NextArguments(threadId: threadId));
+
+  Future<Response> sendRequest(String command, Object? arguments,
+      {bool allowFailure = false}) {
+    final request =
+        Request(seq: _seq++, command: command, arguments: arguments);
+    final completer = Completer<Response>();
+    _requestCompleters[request.seq] = completer;
+    _client.sendRequest(request);
+    return completer.future.timeout(_requestTimeout);
+  }
+
+  Future<Response> stepIn(int threadId) =>
+      sendRequest('stepIn', StepInArguments(threadId: threadId));
+
+  Future<Response> stepOut(int threadId) =>
+      sendRequest('stepOut', StepOutArguments(threadId: threadId));
+
+  Future<Response> terminate() =>
+      sendRequest('terminate', TerminateArguments());
 }
