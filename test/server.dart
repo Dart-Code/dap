@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:dap/src/adapters/dart.dart';
 import 'package:dap/src/debug_adapter.dart';
@@ -15,7 +16,8 @@ import 'test_utils.dart';
 abstract class DapTestServer {
   final DapTestClient client;
 
-  static int _logNumber = 1;
+  static var _logNumber = 1;
+  static final _rnd = Random();
 
   DapTestServer._(
       StreamSink<List<int>> stdin, Stream<List<int>> stdout, Logger logger)
@@ -30,8 +32,12 @@ abstract class DapTestServer {
 
     final logsDir = await logsDirectory;
     Directory(logsDir).createSync();
-    final logger =
-        FileLogger(File(path.join(logsDir, 'dap_${_logNumber++}.txt')));
+    print('$_logNumber');
+
+    final logFile = File(
+        path.join(logsDir, 'dap_${_rnd.nextInt(10000)}_${_logNumber++}.txt'));
+    print('Logging to ${logFile.path}');
+    final logger = FileLogger(logFile);
 
     logger.log(
         'Using ${inProc ? 'in-process' : 'out-of-process'} debug adapter.');
