@@ -48,10 +48,9 @@ class DapTestClient {
       .map((e) => StoppedEventBody.fromJson(e.body as Map<String, Object?>));
 
   Future<Response> continue_(int threadId) =>
-      sendRequest('continue', ContinueArguments(threadId: threadId));
+      sendRequest(ContinueArguments(threadId: threadId));
 
-  Future<Response> disconnect() =>
-      sendRequest('disconnect', DisconnectArguments());
+  Future<Response> disconnect() => sendRequest(DisconnectArguments());
 
   /// Returns a Future that completes with the next [event] event.
   Future<Event> event(String event) =>
@@ -64,30 +63,34 @@ class DapTestClient {
   Future<Response> initialize() async {
     final responses = await Future.wait([
       event('initialized'),
-      sendRequest('initialize', InitializeRequestArguments(adapterID: 'test')),
+      sendRequest(InitializeRequestArguments(adapterID: 'test')),
     ]);
-    await sendRequest('configurationDone', ConfigurationDoneArguments());
+    await sendRequest(ConfigurationDoneArguments());
     return responses[1] as Response; // Return the initialize response.
   }
 
   Future<void> launch(String program,
-      {List<String>? args, FutureOr<String>? cwd}) async {
+      {List<String>? args, FutureOr<String>? cwd, bool? noDebug}) async {
     await sendRequest(
-      'launch',
       DartLaunchRequestArguments(
+        noDebug: noDebug,
         program: program,
         cwd: await (cwd ?? testApplicationsDirectory),
         args: args,
         dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
       ),
+      // We can't automatically pick the command when using a custom type
+      // (DartLaunchRequestArguments).
+      overrideCommand: 'launch',
     );
   }
 
   Future<Response> next(int threadId) =>
-      sendRequest('next', NextArguments(threadId: threadId));
+      sendRequest(NextArguments(threadId: threadId));
 
-  Future<Response> sendRequest(String command, Object? arguments,
-      {bool allowFailure = false}) {
+  Future<Response> sendRequest(Object? arguments,
+      {bool allowFailure = false, String? overrideCommand}) {
+    final command = overrideCommand ?? commandTypes[arguments.runtimeType]!;
     final request =
         Request(seq: _seq++, command: command, arguments: arguments);
     final completer = Completer<Response>();
@@ -96,12 +99,16 @@ class DapTestClient {
     return completer.future.timeout(_requestTimeout);
   }
 
+  Future<Response> stackTrace(int threadId,
+          {int? startFrame, int? numFrames}) =>
+      sendRequest(StackTraceArguments(
+          threadId: threadId, startFrame: startFrame, levels: numFrames));
+
   Future<Response> stepIn(int threadId) =>
-      sendRequest('stepIn', StepInArguments(threadId: threadId));
+      sendRequest(StepInArguments(threadId: threadId));
 
   Future<Response> stepOut(int threadId) =>
-      sendRequest('stepOut', StepOutArguments(threadId: threadId));
+      sendRequest(StepOutArguments(threadId: threadId));
 
-  Future<Response> terminate() =>
-      sendRequest('terminate', TerminateArguments());
+  Future<Response> terminate() => sendRequest(TerminateArguments());
 }

@@ -22,7 +22,8 @@ void main() {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
 
-    final response = await client.sendRequest('notValid', null);
+    final response =
+        await client.sendRequest(null, overrideCommand: 'notValid');
     expect(response.success, isFalse);
     expect(response.command, equals('notValid'));
     expect(response.message, contains('Unknown command: notValid'));
@@ -39,8 +40,7 @@ void main() {
     await Future.wait([
       client.event('initialized').then(messages.add),
       client
-          .sendRequest(
-              'initialize', InitializeRequestArguments(adapterID: 'test'))
+          .sendRequest(InitializeRequestArguments(adapterID: 'test'))
           .then(messages.add),
     ], eagerError: true);
 

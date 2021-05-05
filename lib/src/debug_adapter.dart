@@ -118,8 +118,13 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
     _channel.sendRequest(request);
   }
 
-  FutureOr<void> setBreakpoints(Request request, SetBreakpointsArguments? args,
+  FutureOr<void> setBreakpointsRequest(
+      Request request,
+      SetBreakpointsArguments? args,
       void Function(SetBreakpointsResponseBody) sendResponse);
+
+  FutureOr<void> stackTraceRequest(Request request, StackTraceArguments? args,
+      void Function(StackTraceResponseBody) sendResponse);
 
   FutureOr<void> stepInRequest(
       Request request, StepInArguments? args, void Function(void) sendResponse);
@@ -146,7 +151,9 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       handle(request, configurationDoneRequest,
           ConfigurationDoneArguments.fromJson);
     } else if (request.command == 'setBreakpoints') {
-      handle(request, setBreakpoints, SetBreakpointsArguments.fromJson);
+      handle(request, setBreakpointsRequest, SetBreakpointsArguments.fromJson);
+    } else if (request.command == 'stackTrace') {
+      handle(request, stackTraceRequest, StackTraceArguments.fromJson);
     } else if (request.command == 'threads') {
       handle(request, threadsRequest, _voidFromJson);
     } else if (request.command == 'continue') {

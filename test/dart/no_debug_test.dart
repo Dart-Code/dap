@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:dap/src/adapters/dart.dart';
-import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
@@ -10,38 +8,25 @@ import '../test_utils.dart';
 
 void main() {
   test('Server runs a simple script in noDebug mode', () async {
+    final testFile =
+        File(path.join(await testApplicationsDirectory, 'hello_world.dart'));
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
-    final outputEvents = client
-        .events('output')
-        .map((e) => OutputEventBody.fromJson(e.body as Map<String, Object?>))
-        .toList();
+    final outputEventsFuture = client.outputEvents.toList();
 
     // Initialize.
-    await Future.wait([
-      client.event('initialized'),
-      client.sendRequest(
-          'initialize', InitializeRequestArguments(adapterID: 'test')),
-    ], eagerError: true);
-    await client.sendRequest('configurationDone', ConfigurationDoneArguments());
+    await client.initialize();
 
     // Launch script and wait for termination.
     await Future.wait([
       client.event('terminated'),
-      client.sendRequest(
-        'launch',
-        DartLaunchRequestArguments(
-          noDebug: true,
-          program: 'hello_world.dart',
-          cwd: await testApplicationsDirectory,
-          args: ['one', 'two'],
-          dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
-        ),
-      )
+      client.launch(testFile.path, noDebug: true, args: ['one', 'two'])
     ], eagerError: true);
 
     // Check expected output events were recieved.
-    final output = (await outputEvents).map((e) => e.output).join();
+    final outputEvents = await outputEventsFuture;
+
+    final output = outputEvents.map((e) => e.output).join();
     expect(
         output,
         equals([

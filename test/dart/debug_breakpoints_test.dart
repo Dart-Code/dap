@@ -21,24 +21,21 @@ void main() {
   test('Server stops at a simple line breakpoint', () async {
     final testFile =
         File(path.join(await testApplicationsDirectory, 'hello_world.dart'));
+    final breakpointLine = lineWith(testFile, '// BREAKPOINT1');
     da = await DapTestServer.forEnvironment();
     client = da.client;
     final stoppedEvent = client.stoppedEvents.first;
 
     await client.initialize();
     await client.sendRequest(
-      'setBreakpoints',
       SetBreakpointsArguments(
           source: Source(path: testFile.path),
-          breakpoints: [
-            SourceBreakpoint(line: lineWith(testFile, '// BREAKPOINT1'))
-          ]),
+          breakpoints: [SourceBreakpoint(line: breakpointLine)]),
     );
     await client.launch(testFile.path);
-    final stop = await stoppedEvent;
 
-    // TODO(dantup): Check location.
-    expect(stop.reason, equals('breakpoint'));
+    await client.expectedStopped(
+        await stoppedEvent, 'breakpoint', testFile, breakpointLine);
   });
 
   test('Server stops at a simple line breakpoint and can be resumed', () async {
@@ -50,7 +47,6 @@ void main() {
 
     await client.initialize();
     await client.sendRequest(
-      'setBreakpoints',
       SetBreakpointsArguments(
           source: Source(path: testFile.path),
           breakpoints: [

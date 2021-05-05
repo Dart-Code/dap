@@ -6,11 +6,11 @@ import 'package:collection/collection.dart';
 import 'package:dap/src/debug_adapter.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart' hide Event;
 import 'package:dap/src/logging.dart';
+import 'package:dap/src/mapping.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
 import 'package:vm_service/vm_service.dart' as vm;
-import 'package:vm_service/vm_service_io.dart' as vm;
 
 class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   late IsolateManager _isolateManager;
@@ -177,7 +177,9 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  FutureOr<void> setBreakpoints(Request request, SetBreakpointsArguments? args,
+  FutureOr<void> setBreakpointsRequest(
+      Request request,
+      SetBreakpointsArguments? args,
       void Function(SetBreakpointsResponseBody) sendResponse) async {
     final path = args?.source.path;
     final name = args?.source.name;
@@ -191,6 +193,44 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     sendResponse(SetBreakpointsResponseBody(
       breakpoints: breakpoints.map((e) => Breakpoint(verified: true)).toList(),
     ));
+  }
+
+  @override
+  FutureOr<void> stackTraceRequest(Request request, StackTraceArguments? args,
+      void Function(StackTraceResponseBody) sendResponse) async {
+    // How many "extra" frames we claim to have so that the client will
+    // let the user fetch them in batches rather than all at once.
+    const stackFrameBatchSize = 20;
+    final threadId = args?.threadId;
+    final thread = _isolateManager._threadsByThreadId[threadId];
+    final topFrame = thread?.pauseEvent?.topFrame;
+    final startFrame = args?.startFrame ?? 0;
+    final numFrames = args?.levels ?? 0;
+    var totalFrames = 1;
+
+    if (threadId == null || thread == null) {
+      throw 'No thread with threadId $threadId';
+    }
+
+    if (!thread.paused) {
+      throw 'Thread $threadId is not paused';
+    }
+
+    final stackFrames = <StackFrame>[];
+    // If the request is only for the top frame, we can satisfy it from the
+    // threads `pauseEvent.topFrame`.
+    if (startFrame == 0 && numFrames == 1 && topFrame != null) {
+      stackFrames
+          .add(await convertStackFrame(thread, topFrame, isTopFrame: true));
+      totalFrames = 1 + stackFrameBatchSize;
+    } else {
+      // TODO(dantup): Support more than top frame!
+      throw 'TODO';
+      // totalFrames = isTruncated ? framesRecieved + stackFrameBatch : framesRecieved
+    }
+
+    sendResponse(StackTraceResponseBody(
+        stackFrames: stackFrames, totalFrames: totalFrames));
   }
 
   @override
@@ -221,6 +261,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   @override
   FutureOr<void> threadsRequest(Request request, void args,
       void Function(ThreadsResponseBody) sendResponse) {
+    // TODO(dantup): !
     sendResponse(ThreadsResponseBody(threads: []));
   }
 
@@ -446,28 +487,26 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
       DartLaunchRequestArguments.fromMap(obj);
 }
 
-class IsolateInfo {
-  final vm.IsolateRef isolate;
-  final int threadId;
-  var runnable = false;
-  var atAsyncSuspension = false;
-  var paused = false;
-  var hasPendingResume = false;
-  vm.Event? pauseEvent;
-
-  IsolateInfo(this.threadId, this.isolate);
-}
-
 class IsolateManager {
   final DartDebugAdapter _adapter;
-  final Map<String, IsolateInfo> _isolatesByIsolateId = {};
-  final Map<int, IsolateInfo> _isolatesByThreadId = {};
+  final Map<String, ThreadInfo> _threadsByIsolateId = {};
+  final Map<int, ThreadInfo> _threadsByThreadId = {};
   int _nextThreadNumber = 1;
   final Map<String, List<SourceBreakpoint>> _clientBreakpointsByUri = {};
   final Map<String, Map<String, List<vm.Breakpoint>>>
       _vmBreakpointsByIsolateIdAndUri = {};
 
+  var _nextStoredDataId = 1;
+
+  final _storedData = <int, _StoredData>{};
+
   IsolateManager(this._adapter);
+
+  Future<T> getObject<T extends vm.Response>(
+      vm.IsolateRef isolate, vm.ObjRef object) async {
+    final res = await _adapter._vmService?.getObject(isolate.id!, object.id!);
+    return res as T;
+  }
 
   /// Handles Isolate and Debug events
   FutureOr<void> handleEvent(vm.Event event) async {
@@ -491,9 +530,9 @@ class IsolateManager {
 
   FutureOr<void> registerIsolate(
       vm.IsolateRef isolate, String eventKind) async {
-    final info = _isolatesByIsolateId.putIfAbsent(isolate.id!, () {
-      final info = IsolateInfo(_nextThreadNumber++, isolate);
-      _isolatesByThreadId[info.threadId] = info;
+    final info = _threadsByIsolateId.putIfAbsent(isolate.id!, () {
+      final info = ThreadInfo(this, _nextThreadNumber++, isolate);
+      _threadsByThreadId[info.threadId] = info;
       _adapter.sendEvent(
           ThreadEventBody(reason: 'started', threadId: info.threadId));
       return info;
@@ -514,7 +553,7 @@ class IsolateManager {
       return;
     }
 
-    final thread = _isolatesByIsolateId[isolateId];
+    final thread = _threadsByIsolateId[isolateId];
     if (thread == null) {
       return;
     }
@@ -523,7 +562,7 @@ class IsolateManager {
   }
 
   Future<void> resumeThread(int threadId, [String? resumeType]) async {
-    final thread = _isolatesByThreadId[threadId];
+    final thread = _threadsByThreadId[threadId];
     if (thread == null) {
       throw 'Thread $threadId was not found';
     }
@@ -550,8 +589,14 @@ class IsolateManager {
     _clientBreakpointsByUri[uri] = breakpoints;
 
     // Send the breakpoints to all existing threads.
-    await Future.wait(_isolatesByThreadId.values
+    await Future.wait(_threadsByThreadId.values
         .map((isolate) => _sendBreakpoints(isolate.isolate, uri: uri)));
+  }
+
+  int storeData(ThreadInfo thread, Object data) {
+    final id = _nextStoredDataId++;
+    _storedData[id] = _StoredData(thread, data);
+    return id;
   }
 
   FutureOr<void> _configureIsolate(vm.IsolateRef isolate) async {
@@ -563,19 +608,19 @@ class IsolateManager {
   FutureOr<void> _handleExit(vm.Event event) {
     final isolate = event.isolate!;
     final isolateId = isolate.id!;
-    final thread = _isolatesByIsolateId[isolateId];
+    final thread = _threadsByIsolateId[isolateId];
     if (thread != null) {
       _adapter.sendEvent(
           ThreadEventBody(reason: 'exited', threadId: thread.threadId));
-      _isolatesByIsolateId.remove(isolateId);
-      _isolatesByThreadId.remove(thread.threadId);
+      _threadsByIsolateId.remove(isolateId);
+      _threadsByThreadId.remove(thread.threadId);
     }
   }
 
   FutureOr<void> _handlePause(vm.Event event) async {
     final eventKind = event.kind;
     final isolate = event.isolate!;
-    final thread = _isolatesByIsolateId[isolate.id!];
+    final thread = _threadsByIsolateId[isolate.id!];
 
     if (thread == null) {
       return;
@@ -619,7 +664,7 @@ class IsolateManager {
 
   FutureOr<void> _handleResumed(vm.Event event) {
     final isolate = event.isolate!;
-    final thread = _isolatesByIsolateId[isolate.id!];
+    final thread = _threadsByIsolateId[isolate.id!];
     if (thread != null) {
       thread.paused = false;
       thread.pauseEvent = null;
@@ -660,4 +705,37 @@ class IsolateManager {
       });
     }
   }
+}
+
+class ThreadInfo {
+  final IsolateManager _manager;
+  final vm.IsolateRef isolate;
+  final int threadId;
+  var runnable = false;
+  var atAsyncSuspension = false;
+  var paused = false;
+  var hasPendingResume = false;
+  vm.Event? pauseEvent;
+  final _scripts = <String, Future<vm.Script>>{};
+
+  ThreadInfo(this._manager, this.threadId, this.isolate);
+
+  Future<T> getObject<T extends vm.Response>(vm.ObjRef ref) =>
+      _manager.getObject<T>(isolate, ref);
+
+  Future<vm.Script> getScript(vm.ScriptRef script) {
+    // Scripts are cached since they don't change and we may send lots of
+    // concurrent requests (eg. while trying to resolve location information for
+    // stack frames).
+    return _scripts.putIfAbsent(script.id!, () => getObject<vm.Script>(script));
+  }
+
+  int storeData(Object data) => _manager.storeData(this, data);
+}
+
+class _StoredData {
+  final ThreadInfo thread;
+  final Object data;
+
+  _StoredData(this.thread, this.data);
 }
