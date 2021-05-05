@@ -22,8 +22,8 @@ void main() {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
 
-    final response =
-        await client.sendRequest(null, overrideCommand: 'notValid');
+    final response = await client.sendRequest(null,
+        overrideCommand: 'notValid', allowFailure: true);
     expect(response.success, isFalse);
     expect(response.command, equals('notValid'));
     expect(response.message, contains('Unknown command: notValid'));

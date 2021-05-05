@@ -11,7 +11,7 @@ import 'test_utils.dart';
 /// A helper class to simplify interacting with the DapTestServer.
 class DapTestClient {
   final LspByteStreamServerChannel _client;
-  final Map<int, Completer<Response>> _requestCompleters = {};
+  final Map<int, _OutgoingRequest> _pendingRequests = {};
   final _eventController = StreamController<Event>.broadcast();
   int _seq = 1;
   final _requestTimeout = const Duration(seconds: 10);
@@ -19,11 +19,15 @@ class DapTestClient {
   DapTestClient(this._client) {
     _client.listen((message) {
       if (message is Response) {
-        final completer = _requestCompleters.remove(message.requestSeq);
-        if (message.success) {
-          completer?.complete(message);
+        final pendingRequest = _pendingRequests.remove(message.requestSeq);
+        if (pendingRequest == null) {
+          return;
+        }
+        final completer = pendingRequest.completer;
+        if (message.success || pendingRequest.allowFailure) {
+          completer.complete(message);
         } else {
-          completer?.completeError(message);
+          completer.completeError(message);
         }
       } else if (message is Event) {
         _eventController.add(message);
@@ -31,9 +35,10 @@ class DapTestClient {
         // Handle termination.
         if (message.event == 'terminated') {
           _eventController.close();
-          _requestCompleters.forEach((id, completer) => completer.completeError(
-              'Application terminated without a response to request $id'));
-          _requestCompleters.clear();
+          _pendingRequests.forEach((id, request) => request.completer
+              .completeError(
+                  'Application terminated without a response to request $id'));
+          _pendingRequests.clear();
         }
       }
     });
@@ -94,7 +99,7 @@ class DapTestClient {
     final request =
         Request(seq: _seq++, command: command, arguments: arguments);
     final completer = Completer<Response>();
-    _requestCompleters[request.seq] = completer;
+    _pendingRequests[request.seq] = _OutgoingRequest(completer, allowFailure);
     _client.sendRequest(request);
     return completer.future.timeout(_requestTimeout);
   }
@@ -111,4 +116,11 @@ class DapTestClient {
       sendRequest(StepOutArguments(threadId: threadId));
 
   Future<Response> terminate() => sendRequest(TerminateArguments());
+}
+
+class _OutgoingRequest {
+  final Completer<Response> completer;
+  final bool allowFailure;
+
+  _OutgoingRequest(this.completer, this.allowFailure);
 }
