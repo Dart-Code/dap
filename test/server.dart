@@ -91,11 +91,13 @@ class _OutOfProcess extends DapTestServer {
       [path.join(packageDirectory, 'bin', 'main.dart')],
     );
 
-    process.stderr.listen((data) => throw 'Server sent stderr $data!');
+    final stderrOutput = StringBuffer();
+    process.stderr
+        .listen((data) => stderrOutput.write(String.fromCharCodes(data)));
 
     unawaited(process.exitCode.then((code) async {
       if (code != 0) {
-        throw 'Server process terminated with code $code!';
+        throw 'Server process terminated with code $code!\n$stderrOutput';
       }
     }));
 

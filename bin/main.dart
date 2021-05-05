@@ -20,6 +20,7 @@ void main(List<String> args) {
       final errorLogDir = Directory.systemTemp.createTempSync('dart_dap_error');
       final errorLogFile = File(path.join(errorLogDir.path, 'error.txt'));
       errorLogFile.writeAsStringSync('$e\n$s');
+      throw e;
     },
   );
 }
