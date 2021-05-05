@@ -141,7 +141,9 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
 
     _vmServiceInfoFileWatcher = vmServiceInfoFile
         ?.watch(events: FileSystemEvent.all)
-        .listen(_handleVmServiceInfoEvent);
+        .listen(_handleVmServiceInfoEvent, onError: (e) {
+      logger.log('Ignoring exception from watcher: $e');
+    });
 
     // Don't start launching until configurationDone.
     if (!_configurationDoneCompleter.isCompleted) {
