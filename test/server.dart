@@ -15,6 +15,8 @@ import 'test_utils.dart';
 abstract class DapTestServer {
   final DapTestClient client;
 
+  static int _logNumber = 1;
+
   DapTestServer._(
       StreamSink<List<int>> stdin, Stream<List<int>> stdout, Logger logger)
       : client = DapTestClient(
@@ -28,7 +30,8 @@ abstract class DapTestServer {
 
     final logsDir = await logsDirectory;
     Directory(logsDir).createSync();
-    final logger = FileLogger(File(path.join(logsDir, 'dap.txt')));
+    final logger =
+        FileLogger(File(path.join(logsDir, 'dap_${_logNumber++}.txt')));
 
     logger.log(
         'Using ${inProc ? 'in-process' : 'out-of-process'} debug adapter.');

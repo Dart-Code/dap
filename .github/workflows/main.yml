@@ -50,3 +50,9 @@ jobs:
         run: dart test
         env:
           DAP_EXTERNAL: true
+
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: test-logs
+          path: logs/
