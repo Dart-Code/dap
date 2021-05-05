@@ -32,15 +32,17 @@ class DapTestClient {
       } else if (message is Event) {
         _eventController.add(message);
 
-        // Handle termination.
+        // When we see a terminated event, close the event stream so if any
+        // tests are waiting on something that will never come, they fail at
+        // a useful location.
         if (message.event == 'terminated') {
           _eventController.close();
-          _pendingRequests.forEach((id, request) => request.completer
-              .completeError(
-                  'Application terminated without a response to request $id'));
-          _pendingRequests.clear();
         }
       }
+    }, onDone: () {
+      _pendingRequests.forEach((id, request) => request.completer.completeError(
+          'Application terminated without a response to request $id (${request.name})'));
+      _pendingRequests.clear();
     });
   }
 
@@ -99,7 +101,8 @@ class DapTestClient {
     final request =
         Request(seq: _seq++, command: command, arguments: arguments);
     final completer = Completer<Response>();
-    _pendingRequests[request.seq] = _OutgoingRequest(completer, allowFailure);
+    _pendingRequests[request.seq] =
+        _OutgoingRequest(completer, command, allowFailure);
     _client.sendRequest(request);
     return _logIfSlow('Request "$command"', completer.future);
   }
@@ -136,7 +139,8 @@ class DapTestClient {
 
 class _OutgoingRequest {
   final Completer<Response> completer;
+  final String name;
   final bool allowFailure;
 
-  _OutgoingRequest(this.completer, this.allowFailure);
+  _OutgoingRequest(this.completer, this.name, this.allowFailure);
 }

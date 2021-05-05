@@ -35,7 +35,7 @@ abstract class DapTestServer {
 
     final logFile = File(
         path.join(logsDir, 'dap_${_rnd.nextInt(10000)}_${_logNumber++}.txt'));
-    print('Logging to ${logFile.path}');
+    print('      Logging to ${logFile.path}');
     final logger = FileLogger(logFile);
 
     logger.log(
@@ -80,14 +80,16 @@ class _InProcess extends DapTestServer {
 }
 
 class _OutOfProcess extends DapTestServer {
-  // TODO(dantup): Use this to shut down.
-  // ignore: unused_field
+  var _isShuttingDown = false;
   final Process _process;
   _OutOfProcess._(this._process, Logger logger)
       : super._(_process.stdin, _process.stdout, logger);
 
   @override
-  void kill() => _process.kill(ProcessSignal.sigkill);
+  void kill() {
+    _isShuttingDown = true;
+    _process.kill(ProcessSignal.sigkill);
+  }
 
   static Future<_OutOfProcess> create(Logger logger) async {
     final packageLibDirectory =
@@ -99,16 +101,16 @@ class _OutOfProcess extends DapTestServer {
       [path.join(packageDirectory, 'bin', 'main.dart')],
     );
 
-    final stderrOutput = StringBuffer();
-    process.stderr
-        .listen((data) => stderrOutput.write(String.fromCharCodes(data)));
+    final server = _OutOfProcess._(process, logger);
 
+    // If the server process shuts down unexpectedly with an error, throw so
+    // the tests are failed.
     unawaited(process.exitCode.then((code) async {
-      if (code != 0) {
-        throw 'Server process terminated with code $code!\n$stderrOutput';
+      if (code != 0 && !server._isShuttingDown) {
+        throw 'Server process terminated with code $code!';
       }
     }));
 
-    return _OutOfProcess._(process, logger);
+    return server;
   }
 }
