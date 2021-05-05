@@ -32,7 +32,6 @@ abstract class DapTestServer {
 
     final logsDir = await logsDirectory;
     Directory(logsDir).createSync();
-    print('$_logNumber');
 
     final logFile = File(
         path.join(logsDir, 'dap_${_rnd.nextInt(10000)}_${_logNumber++}.txt'));

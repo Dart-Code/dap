@@ -14,7 +14,7 @@ class DapTestClient {
   final Map<int, _OutgoingRequest> _pendingRequests = {};
   final _eventController = StreamController<Event>.broadcast();
   int _seq = 1;
-  final _requestTimeout = const Duration(seconds: 10);
+  final _requestWarningDuration = const Duration(seconds: 2);
 
   DapTestClient(this._client) {
     _client.listen((message) {
@@ -101,7 +101,13 @@ class DapTestClient {
     final completer = Completer<Response>();
     _pendingRequests[request.seq] = _OutgoingRequest(completer, allowFailure);
     _client.sendRequest(request);
-    return completer.future.timeout(_requestTimeout);
+    Future.delayed(_requestWarningDuration).then((_) {
+      if (!completer.isCompleted) {
+        print(
+            'Response to "$command" has taken longer than ${_requestWarningDuration.inSeconds}s');
+      }
+    });
+    return completer.future;
   }
 
   Future<Response> stackTrace(int threadId,
