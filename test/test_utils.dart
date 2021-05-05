@@ -7,8 +7,6 @@ import 'package:test/test.dart';
 
 import 'client.dart';
 
-final eol = Platform.isWindows ? '\r\n' : '\n';
-
 final Future<String> logsDirectory = (() async => path.join(
     path.dirname(path.dirname(
         (await Isolate.resolvePackageUri(Uri.parse('package:dap/dap.dart')))!
@@ -21,6 +19,12 @@ final Future<String> testApplicationsDirectory = (() async => path.join(
             .toFilePath())),
     'test',
     'test_applications'))();
+
+/// Expects [actual] to equal the lines [expected], ignoring differences in line
+/// endings.
+void expectLines(String actual, List<String> expected) {
+  expect(actual.replaceAll('\r\n', '\n'), equals(expected.join('\n')));
+}
 
 int lineWith(File file, String searchText) =>
     file.readAsLinesSync().indexWhere((line) => line.contains(searchText));

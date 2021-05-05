@@ -27,14 +27,12 @@ void main() {
     final outputEvents = await outputEventsFuture;
 
     final output = outputEvents.map((e) => e.output).join();
-    expect(
-        output,
-        equals([
-          'Hello!',
-          'World!',
-          'args: [one, two]',
-          '',
-          'Exited.',
-        ].join(eol)));
+    expectLines(output, [
+      'Hello!',
+      'World!',
+      'args: [one, two]',
+      '',
+      'Exited.',
+    ]);
   });
 }

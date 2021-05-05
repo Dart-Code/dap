@@ -15,8 +15,6 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   final LspByteStreamServerChannel _channel;
   final Logger logger;
 
-  final eol = Platform.isWindows ? '\r\n' : '\n';
-
   DebugAdapter(this._channel, this.logger) {
     _channel.listen((ProtocolMessage message) {
       if (message is Request) {

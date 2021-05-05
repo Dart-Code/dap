@@ -279,7 +279,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     logger.log('Connecting to debugger at $uri');
     sendEvent(
       OutputEventBody(
-          category: 'console', output: 'Connecting to VM Service at $uri$eol'),
+          category: 'console', output: 'Connecting to VM Service at $uri\n'),
     );
     // TODO(dantup): Support logging of VM traffic.
     final vmService = await _vmServiceConnectUri(
@@ -356,10 +356,11 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
 
   void _handleExitCode(int code) {
     final codeSuffix = code == 0 ? '' : ' ($code)';
+    logger.log('Process exited ($code)');
     sendEvent(
       // Always add a newline since the last printed text might not have had
       // one.
-      OutputEventBody(category: 'console', output: '${eol}Exited$codeSuffix.'),
+      OutputEventBody(category: 'console', output: '\nExited$codeSuffix.'),
     );
     sendEvent(TerminatedEventBody());
   }
