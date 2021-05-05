@@ -54,5 +54,5 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: test-logs
+          name: test-logs-${{matrix.flutter-version}}-${{ matrix.os }}
           path: logs/
