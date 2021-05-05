@@ -58,8 +58,8 @@ class DapTestClient {
   Future<Response> disconnect() => sendRequest(DisconnectArguments());
 
   /// Returns a Future that completes with the next [event] event.
-  Future<Event> event(String event) =>
-      _eventController.stream.firstWhere((e) => e.event == event);
+  Future<Event> event(String event) => _logIfSlow('Event "$event"',
+      _eventController.stream.firstWhere((e) => e.event == event));
 
   /// Returns a stream for [event] events.
   Stream<Event> events(String event) =>
@@ -101,13 +101,7 @@ class DapTestClient {
     final completer = Completer<Response>();
     _pendingRequests[request.seq] = _OutgoingRequest(completer, allowFailure);
     _client.sendRequest(request);
-    Future.delayed(_requestWarningDuration).then((_) {
-      if (!completer.isCompleted) {
-        print(
-            'Response to "$command" has taken longer than ${_requestWarningDuration.inSeconds}s');
-      }
-    });
-    return completer.future;
+    return _logIfSlow('Request "$command"', completer.future);
   }
 
   Future<Response> stackTrace(int threadId,
@@ -122,6 +116,22 @@ class DapTestClient {
       sendRequest(StepOutArguments(threadId: threadId));
 
   Future<Response> terminate() => sendRequest(TerminateArguments());
+
+  /// Prints a warning if [future] takes longer than [_requestWarningDuration]
+  /// to complete.
+  ///
+  /// Returns [future].
+  Future<T> _logIfSlow<T>(String name, Future<T> future) {
+    var didComplete = false;
+    future.then((_) => didComplete = true);
+    Future.delayed(_requestWarningDuration).then((_) {
+      if (!didComplete) {
+        print(
+            '$name has taken longer than ${_requestWarningDuration.inSeconds}s');
+      }
+    });
+    return future;
+  }
 }
 
 class _OutgoingRequest {

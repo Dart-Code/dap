@@ -14,10 +14,10 @@ import 'client.dart';
 import 'test_utils.dart';
 
 abstract class DapTestServer {
-  final DapTestClient client;
-
   static var _logNumber = 1;
+
   static final _rnd = Random();
+  final DapTestClient client;
 
   DapTestServer._(
       StreamSink<List<int>> stdin, Stream<List<int>> stdout, Logger logger)
