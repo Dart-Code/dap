@@ -126,8 +126,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       // created fast enough and the VM (and watcher) claiming the folder does
       // not exist.
       final serviceInfoFilePath = args.vmServiceInfoFile ??
-          path.join(_tmpDir.path,
-              'dart-vm-service-${DateTime.now().millisecond}-vm.json');
+          path.join(_tmpDir.createTempSync('dart-vm-service').path, 'vm.json');
       _vmServiceInfoFile = File(serviceInfoFilePath);
     }
     final vmServiceInfoFile = _vmServiceInfoFile;
@@ -146,8 +145,9 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       ...?args.vmAdditionalArgs,
     ];
 
-    _vmServiceInfoFileWatcher = vmServiceInfoFile
-        ?.watch(events: FileSystemEvent.all)
+    _vmServiceInfoFileWatcher = vmServiceInfoFile?.parent
+        .watch(events: FileSystemEvent.all)
+        .where((event) => event.path == vmServiceInfoFile.path)
         .listen(_handleVmServiceInfoEvent, onError: (e) {
       logger.log('Ignoring exception from watcher: $e');
     });
