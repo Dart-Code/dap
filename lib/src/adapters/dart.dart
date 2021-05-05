@@ -12,6 +12,7 @@ import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
 import 'package:vm_service/vm_service.dart' as vm;
 
+/// A [DebugAdapter] implementation for running Dart CLI scripts.
 class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   late IsolateManager _isolateManager;
   Process? _process;
@@ -507,21 +508,42 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
       DartLaunchRequestArguments.fromMap(obj);
 }
 
+/// Manages state of Isolates (called Threads by the DAP protocol).
+///
+/// Handles incoming Isolate and Debug events to track the lifetime of isolates
+/// and updating breakpoints for each isolate as necessary.
 class IsolateManager {
   final DartDebugAdapter _adapter;
   final Map<String, ThreadInfo> _threadsByIsolateId = {};
   final Map<int, ThreadInfo> _threadsByThreadId = {};
   int _nextThreadNumber = 1;
+
+  /// Tracks breakpoints last provided by the client so they can be sent to new
+  /// isolates that appear after initial breakpoints are set.
   final Map<String, List<SourceBreakpoint>> _clientBreakpointsByUri = {};
+
+  /// Tracks breakpoints created in the VM, so they can be removed when the
+  /// editor sends new breakpoints (currently the editor just sends a new list
+  /// and not requests to add/remove).
   final Map<String, Map<String, List<vm.Breakpoint>>>
       _vmBreakpointsByIsolateIdAndUri = {};
 
   var _nextStoredDataId = 1;
 
+  /// A store of data indexed by a number that is used for round tripping
+  /// references to the client (which only accepts ints). For example stack
+  /// frames may be sent with a "sourceReference" that relates to a scriptRef,
+  /// which is sent back to us in sourceRequest to get more information about
+  /// the script.
   final _storedData = <int, _StoredData>{};
 
   IsolateManager(this._adapter);
 
+  /// A list of all current active isolates.
+  ///
+  /// When isolates exit, they will no longer be returned in this list, although
+  /// due to the async nature, it's not guaranteed that threads in this list have
+  /// not exited between accessing this list and trying to use the results.
   List<ThreadInfo> get threads => _threadsByIsolateId.values.toList();
 
   Future<T> getObject<T extends vm.Response>(
@@ -550,6 +572,12 @@ class IsolateManager {
     }
   }
 
+  /// Registers a new isolate that exists at startup, or has subsequently been
+  /// created.
+  ///
+  /// New isolates will be configured with the correct pause-exception behaviour,
+  /// libraries will be marked as debuggable if appropriate, and breakpoints
+  /// sent.
   FutureOr<void> registerIsolate(
       vm.IsolateRef isolate, String eventKind) async {
     final info = _threadsByIsolateId.putIfAbsent(isolate.id!, () {
@@ -583,6 +611,14 @@ class IsolateManager {
     await resumeThread(thread.threadId);
   }
 
+  /// Resumes (or steps) an isolate using its client [threadId].
+  ///
+  /// If the isolate is not paused, or already has a pending resume request
+  /// in-flight, a request will not be sent.
+  ///
+  /// If the isolate is paused at an async suspension and the [resumeType] is
+  /// [vm.StepOption.kOver], a [StepOption.kOverAsyncSuspension] step will be
+  /// sent instead.
   Future<void> resumeThread(int threadId, [String? resumeType]) async {
     final thread = _threadsByThreadId[threadId];
     if (thread == null) {
@@ -605,6 +641,8 @@ class IsolateManager {
     }
   }
 
+  /// Records breakpoints for [uri]. All existing isolates breakpoints will be
+  /// updated to match the new set.
   FutureOr<void> setBreakpoints(
       String uri, List<SourceBreakpoint> breakpoints) async {
     // Track the breakpoints to get sent to any new isolates that start.
@@ -615,12 +653,16 @@ class IsolateManager {
         .map((isolate) => _sendBreakpoints(isolate.isolate, uri: uri)));
   }
 
+  /// Stores some basic data indexed by an integer for use in "reference" fields
+  /// that are round-tripped to the client.
   int storeData(ThreadInfo thread, Object data) {
     final id = _nextStoredDataId++;
     _storedData[id] = _StoredData(thread, data);
     return id;
   }
 
+  /// Configures a new isolate, setting it's exception-pause mode, which
+  /// libraries are debuggable, and sending all breakpoints.
   FutureOr<void> _configureIsolate(vm.IsolateRef isolate) async {
     // TODO(dantup): Exception pause mode
     // TODO(dantup): setLibraryDebuggable
@@ -639,6 +681,19 @@ class IsolateManager {
     }
   }
 
+  /// Handles a pause event.
+  ///
+  /// For [vm.EventKind.kPausePostRequest] which occurs after a restart, the isolate
+  /// will be re-configured (pause-exception behaviour, debuggable libraries,
+  /// breakpoints) and then resumed.
+  ///
+  /// For [vm.EventKind.kPauseStart], the isolate will be resumed.
+  ///
+  /// For breakpoints with conditions that are not met and for logpoints, the
+  /// isolate will be automatically resumed.
+  ///
+  /// For all other pause types, the isolate will remain paused and a
+  /// corresponding "Stopped" event sent to the editor.
   FutureOr<void> _handlePause(vm.Event event) async {
     final eventKind = event.kind;
     final isolate = event.isolate!;
@@ -676,7 +731,7 @@ class IsolateManager {
       // final exception = event.exception;
       // if (exception != null) {
       //   (exception as InstanceWithEvaluateName).evaluateName = "$e";
-      //   this.exceptionReference = this.storeData(exception);
+      //   thread.exceptionReference = this.storeData(exception);
       // }
 
       _adapter.sendEvent(
@@ -695,6 +750,11 @@ class IsolateManager {
     }
   }
 
+  /// Sets breakpoints for an individual isolate.
+  ///
+  /// If [uri] is provided, only breakpoints for that URI will be sent (used
+  /// when breakpoints are modified for a single file in the editor). Otherwise
+  /// all known editor breakpoints will be sent (used for newly-created isoaltes).
   Future<void> _sendBreakpoints(vm.IsolateRef isolate, {String? uri}) async {
     final service = _adapter._vmService;
     if (service == null) {
@@ -729,6 +789,7 @@ class IsolateManager {
   }
 }
 
+/// Holds state for a single Isolate/Thread.
 class ThreadInfo {
   final IsolateManager _manager;
   final vm.IsolateRef isolate;
@@ -736,9 +797,18 @@ class ThreadInfo {
   var runnable = false;
   var atAsyncSuspension = false;
   var paused = false;
-  var hasPendingResume = false;
+
+  // The most recent pauseEvent for this isolate.
   vm.Event? pauseEvent;
+
+  // A cache of requests (Futures) to fetch scripts, so that multiple requests
+  // that require scripts (for example looking up locations for stack frames from
+  // tokenPos) can share the same response.
   final _scripts = <String, Future<vm.Script>>{};
+
+  /// Whether this isolate has an in-flight resume request that has not yet
+  /// been responded to.
+  var hasPendingResume = false;
 
   ThreadInfo(this._manager, this.threadId, this.isolate);
 
@@ -752,6 +822,8 @@ class ThreadInfo {
     return _scripts.putIfAbsent(script.id!, () => getObject<vm.Script>(script));
   }
 
+  /// Stores some basic data indexed by an integer for use in "reference" fields
+  /// that are round-tripped to the client.
   int storeData(Object data) => _manager.storeData(this, data);
 }
 
