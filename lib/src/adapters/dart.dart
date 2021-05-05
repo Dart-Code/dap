@@ -186,6 +186,13 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
+  FutureOr<void> scopesRequest(Request request, ScopesArguments? args,
+      void Function(ScopesResponseBody) sendResponse) {
+    // TOOD(dantup): Variables + exception!
+    sendResponse(ScopesResponseBody(scopes: []));
+  }
+
+  @override
   FutureOr<void> setBreakpointsRequest(
       Request request,
       SetBreakpointsArguments? args,
@@ -234,7 +241,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       totalFrames = 1 + stackFrameBatchSize;
     } else {
       // TODO(dantup): Support more than top frame!
-      throw 'TODO';
+
       // totalFrames = isTruncated ? framesRecieved + stackFrameBatch : framesRecieved
     }
 
@@ -270,8 +277,11 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   @override
   FutureOr<void> threadsRequest(Request request, void args,
       void Function(ThreadsResponseBody) sendResponse) {
-    // TODO(dantup): !
-    sendResponse(ThreadsResponseBody(threads: []));
+    final threads = _isolateManager.threads
+        .map((t) =>
+            Thread(id: t.threadId, name: t.isolate.name ?? '<unnamed isolate>'))
+        .toList();
+    sendResponse(ThreadsResponseBody(threads: threads));
   }
 
   Future<void> _connectDebugger(Uri uri) async {
@@ -511,6 +521,8 @@ class IsolateManager {
   final _storedData = <int, _StoredData>{};
 
   IsolateManager(this._adapter);
+
+  List<ThreadInfo> get threads => _threadsByIsolateId.values.toList();
 
   Future<T> getObject<T extends vm.Response>(
       vm.IsolateRef isolate, vm.ObjRef object) async {

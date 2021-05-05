@@ -98,6 +98,9 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   FutureOr<void> nextRequest(
       Request request, NextArguments? args, void Function(void) sendResponse);
 
+  FutureOr<void> scopesRequest(Request request, ScopesArguments? args,
+      void Function(ScopesResponseBody) sendResponse);
+
   void sendEvent(EventBody body) {
     final event = Event(
       seq: _sequence++,
@@ -154,6 +157,8 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       handle(request, stackTraceRequest, StackTraceArguments.fromJson);
     } else if (request.command == 'threads') {
       handle(request, threadsRequest, _voidFromJson);
+    } else if (request.command == 'scopes') {
+      handle(request, scopesRequest, ScopesArguments.fromJson);
     } else if (request.command == 'continue') {
       handle(request, continueRequest, ContinueArguments.fromJson);
     } else if (request.command == 'next') {
