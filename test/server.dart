@@ -26,7 +26,10 @@ abstract class DapTestServer {
   static FutureOr<DapTestServer> forEnvironment() async {
     final inProc = Platform.environment['DAP_EXTERNAL'] != 'true';
 
-    final logger = FileLogger(File(path.join(await logsDirectory, 'dap.txt')));
+    final logsDir = await logsDirectory;
+    Directory(logsDir).createSync();
+    final logger = FileLogger(File(path.join(logsDir, 'dap.txt')));
+
     logger.log(
         'Using ${inProc ? 'in-process' : 'out-of-process'} debug adapter.');
     return inProc
