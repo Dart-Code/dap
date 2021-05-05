@@ -380,10 +380,10 @@ class CodeGenerator {
       for (var i = 0; i < types.length; i++) {
         final isLast = i == types.length - 1;
 
-        // For the last item, we won't wrap if in a check, as the constructor
-        // will only be called if canParse() returned true, so it's the only
-        // remaining option.
-        if (!isLast) {
+        // For the last item, if we're optional we won't wrap if in a check, as
+        // the constructor will only be called if canParse() returned true, so
+        // it'll the only remaining option.
+        if (!isLast || isOptional) {
           _writeTypeCheckCondition(buffer, types[i], valueCode,
               isOptional: false);
           buffer.write(' ? ');
@@ -394,6 +394,8 @@ class CodeGenerator {
 
         if (!isLast) {
           buffer.write(' : ');
+        } else if (isLast && isOptional) {
+          buffer.write(' : null');
         }
       }
     } else if (type.isSpecType) {
@@ -517,6 +519,9 @@ class CodeGenerator {
         }
         _writeTypeCheckCondition(buffer, types[i], valueCode,
             isOptional: false, invert: invert);
+      }
+      if (isOptional) {
+        buffer.write(' $opOr $valueCode $opEquals null');
       }
       buffer.write(')');
     } else if (type.isSpecType) {

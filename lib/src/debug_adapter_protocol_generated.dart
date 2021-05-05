@@ -3618,13 +3618,13 @@ class RestartArguments extends RequestArguments {
   });
 
   RestartArguments.fromMap(Map<String, Object?> obj):
-    arguments = LaunchRequestArguments.canParse(obj['arguments']) ? Either2<LaunchRequestArguments, AttachRequestArguments>.t1(LaunchRequestArguments.fromJson(obj['arguments'] as Map<String, Object?>)) : Either2<LaunchRequestArguments, AttachRequestArguments>.t2(AttachRequestArguments.fromJson(obj['arguments'] as Map<String, Object?>));
+    arguments = LaunchRequestArguments.canParse(obj['arguments']) ? Either2<LaunchRequestArguments, AttachRequestArguments>.t1(LaunchRequestArguments.fromJson(obj['arguments'] as Map<String, Object?>)) : AttachRequestArguments.canParse(obj['arguments']) ? Either2<LaunchRequestArguments, AttachRequestArguments>.t2(AttachRequestArguments.fromJson(obj['arguments'] as Map<String, Object?>)) : null;
 
   static bool canParse(Object? obj) {
     if (obj is! Map<String, dynamic>) {
       return false;
     }
-    if ((!LaunchRequestArguments.canParse(obj['arguments']) && !AttachRequestArguments.canParse(obj['arguments']))) {
+    if ((!LaunchRequestArguments.canParse(obj['arguments']) && !AttachRequestArguments.canParse(obj['arguments']) && obj['arguments'] != null)) {
       return false;
     }
     return RequestArguments.canParse(obj);
@@ -5011,7 +5011,7 @@ class StackFrame {
     id = obj['id'] as int,
     instructionPointerReference = obj['instructionPointerReference'] as String?,
     line = obj['line'] as int,
-    moduleId = obj['moduleId'] is int ? Either2<int, String>.t1(obj['moduleId'] as int) : Either2<int, String>.t2(obj['moduleId'] as String),
+    moduleId = obj['moduleId'] is int ? Either2<int, String>.t1(obj['moduleId'] as int) : obj['moduleId'] is String ? Either2<int, String>.t2(obj['moduleId'] as String) : null,
     name = obj['name'] as String,
     presentationHint = obj['presentationHint'] as String?,
     source = obj['source'] == null ? null : Source.fromJson(obj['source'] as Map<String, Object?>);
@@ -5041,7 +5041,7 @@ class StackFrame {
     if (obj['line'] is! int) {
       return false;
     }
-    if ((obj['moduleId'] is! int && obj['moduleId'] is! String)) {
+    if ((obj['moduleId'] is! int && obj['moduleId'] is! String && obj['moduleId'] != null)) {
       return false;
     }
     if (obj['name'] is! String) {
