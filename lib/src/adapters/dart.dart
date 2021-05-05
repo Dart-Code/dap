@@ -119,8 +119,15 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       // TODO(dantup): For some DAs (test, Flutter) we can't use
       // write-service-info so this class will likely need splitting into two
       // (a base DA and a Dart DA).
+
+      // If a file wasn't supplied, create a temp one with a unique name.
+      // Using _tmpDir.createTempory() seems to cause errors on Windows+Linux
+      // (at least on GitHub Actions) which may be caused by the folder not being
+      // created fast enough and the VM (and watcher) claiming the folder does
+      // not exist.
       final serviceInfoFilePath = args.vmServiceInfoFile ??
-          path.join(_tmpDir.createTempSync('dart-vm-service').path, 'vm.json');
+          path.join(_tmpDir.path,
+              'dart-vm-service-${DateTime.now().millisecond}-vm.json');
       _vmServiceInfoFile = File(serviceInfoFilePath);
     }
     final vmServiceInfoFile = _vmServiceInfoFile;
