@@ -20,6 +20,27 @@ class ProtocolConverter {
     return !rel.startsWith('..') ? rel : sourcePath;
   }
 
+  String convertVmInstanceRefToDisplayString(vm.InstanceRef ref) {
+    if (ref.kind == 'String' || ref.valueAsString != null) {
+      var stringValue = ref.valueAsString.toString();
+      if (ref.valueAsStringIsTruncated ?? false) {
+        stringValue = '$stringValue…';
+      }
+      if (ref.kind == 'String') {
+        stringValue = '"$stringValue"';
+      }
+      return stringValue;
+    } else if (ref.kind == 'List') {
+      return 'List (${ref.length} ${ref.length == 1 ? "item" : "items"})';
+    } else if (ref.kind == 'Map') {
+      return 'Map (${ref.length} ${ref.length == 1 ? "item" : "items"})';
+    } else if (ref.kind == 'Type') {
+      return 'Type (${ref.name})';
+    } else {
+      return '<unknown ${ref.kind}>';
+    }
+  }
+
   FutureOr<dap.StackFrame> convertVmToDapStackFrame(
       ThreadInfo thread, vm.Frame frame,
       {required bool isTopFrame, int? firstAsyncMarkerIndex}) async {

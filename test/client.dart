@@ -59,6 +59,11 @@ class DapTestClient {
 
   Future<Response> disconnect() => sendRequest(DisconnectArguments());
 
+  Future<Response> evaluate(String expression,
+          {int? frameId, String? context}) =>
+      sendRequest(EvaluateArguments(
+          expression: expression, frameId: frameId, context: context));
+
   /// Returns a Future that completes with the next [event] event.
   Future<Event> event(String event) => _logIfSlow('Event "$event"',
       _eventController.stream.firstWhere((e) => e.event == event));

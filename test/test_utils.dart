@@ -8,13 +8,13 @@ import 'package:test/test.dart';
 
 import 'client.dart';
 
-final rnd = Random();
-
 final Future<String> logsDirectory = (() async => path.join(
     path.dirname(path.dirname(
         (await Isolate.resolvePackageUri(Uri.parse('package:dap/dap.dart')))!
             .toFilePath())),
     'logs'))();
+
+final rnd = Random();
 
 final Future<String> testApplicationsDirectory = (() async => path.join(
     path.dirname(path.dirname(
@@ -65,6 +65,19 @@ extension DapTestClientExtensions on DapTestClient {
     }
 
     return stop;
+  }
+
+  Future<EvaluateResponseBody> expectEvalResult(
+      int frameId, String expression, String expectedResult) async {
+    final response = await evaluate(expression, frameId: frameId);
+    expect(response.success, isTrue);
+    expect(response.command, equals('evaluate'));
+    final body =
+        EvaluateResponseBody.fromJson(response.body as Map<String, Object?>);
+
+    expect(body.result, equals(expectedResult));
+
+    return body;
   }
 
   /// A helper that verifies the call stack matches [expectedCallLines], a text

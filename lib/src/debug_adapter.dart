@@ -28,11 +28,14 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   FutureOr<void> configurationDoneRequest(Request request,
       ConfigurationDoneArguments? args, void Function(void) sendResponse);
 
-  FutureOr<void> continueRequest(Request request, ContinueArguments? args,
+  FutureOr<void> continueRequest(Request request, ContinueArguments args,
       void Function(void) sendResponse);
 
   FutureOr<void> disconnectRequest(Request request, DisconnectArguments? args,
       void Function(void) sendResponse);
+
+  FutureOr<void> evaluateRequest(Request request, EvaluateArguments args,
+      void Function(EvaluateResponseBody) sendResponse);
 
   /// Calls [handler] for an incoming request, using [fromJson] to parse its
   /// arguments from the request.
@@ -45,12 +48,13 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   /// require a body.
   FutureOr<void> handle<TArg, TResp>(
     Request request,
-    FutureOr<void> Function(Request, TArg?, void Function(TResp)) handler,
+    FutureOr<void> Function(Request, TArg, void Function(TResp)) handler,
     TArg Function(Map<String, Object?>) fromJson,
   ) async {
     final args = request.arguments != null
         ? fromJson(request.arguments as Map<String, Object?>)
-        : null;
+        // arguments are only valid to be null then TArg is nullable.
+        : null as TArg;
 
     // Because handlers may need to send responses before they have finished
     // executing (for example, initializeRequest needs to send its response
@@ -78,16 +82,16 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
 
   FutureOr<void> initializeRequest(
       Request request,
-      InitializeRequestArguments? args,
+      InitializeRequestArguments args,
       void Function(Capabilities) sendResponse);
 
   FutureOr<void> launchRequest(
-      Request request, TLaunchArgs? args, void Function(void) sendResponse);
+      Request request, TLaunchArgs args, void Function(void) sendResponse);
 
   FutureOr<void> nextRequest(
-      Request request, NextArguments? args, void Function(void) sendResponse);
+      Request request, NextArguments args, void Function(void) sendResponse);
 
-  FutureOr<void> scopesRequest(Request request, ScopesArguments? args,
+  FutureOr<void> scopesRequest(Request request, ScopesArguments args,
       void Function(ScopesResponseBody) sendResponse);
 
   /// Sends an event, lookup up the event type based on the runtimeType of
@@ -114,17 +118,17 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
 
   FutureOr<void> setBreakpointsRequest(
       Request request,
-      SetBreakpointsArguments? args,
+      SetBreakpointsArguments args,
       void Function(SetBreakpointsResponseBody) sendResponse);
 
-  FutureOr<void> stackTraceRequest(Request request, StackTraceArguments? args,
+  FutureOr<void> stackTraceRequest(Request request, StackTraceArguments args,
       void Function(StackTraceResponseBody) sendResponse);
 
   FutureOr<void> stepInRequest(
-      Request request, StepInArguments? args, void Function(void) sendResponse);
+      Request request, StepInArguments args, void Function(void) sendResponse);
 
-  FutureOr<void> stepOutRequest(Request request, StepOutArguments? args,
-      void Function(void) sendResponse);
+  FutureOr<void> stepOutRequest(
+      Request request, StepOutArguments args, void Function(void) sendResponse);
 
   FutureOr<void> terminateRequest(Request request, TerminateArguments? args,
       void Function(void) sendResponse);
@@ -187,6 +191,8 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       handle(request, stepInRequest, StepInArguments.fromJson);
     } else if (request.command == 'stepOut') {
       handle(request, stepOutRequest, StepOutArguments.fromJson);
+    } else if (request.command == 'evaluate') {
+      handle(request, evaluateRequest, EvaluateArguments.fromJson);
     } else {
       throw Exception('Unknown command: ${request.command}');
     }

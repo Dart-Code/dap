@@ -44,7 +44,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
 
   FutureOr<void> attachRequest(
     Request request,
-    AttachRequestArguments? args,
+    AttachRequestArguments args,
     void Function(void) sendResponse,
   ) async {
     // Reminder: Don't start launching until configurationDone.
@@ -62,9 +62,9 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  FutureOr<void> continueRequest(Request request, ContinueArguments? args,
+  FutureOr<void> continueRequest(Request request, ContinueArguments args,
       void Function(void) sendResponse) async {
-    await _isolateManager.resumeThread(args!.threadId);
+    await _isolateManager.resumeThread(args.threadId);
     sendResponse(null);
   }
 
@@ -80,11 +80,60 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
+  FutureOr<void> evaluateRequest(Request request, EvaluateArguments args,
+      void Function(EvaluateResponseBody) sendResponse) async {
+    final frameId = args.frameId;
+    // TODO(dantup): Special handling for clipboard/watch (see Dart-Code DAP).
+
+    // If the frameId was supplied, it maps to an ID we provided from stored
+    // data so we need to look up the isolate + frame index for it.
+    ThreadInfo? thread;
+    int? frameIndex;
+    if (frameId != null) {
+      final data = _isolateManager.getStoredData(frameId);
+      if (data != null) {
+        thread = data.thread;
+        frameIndex = (data.data as vm.Frame).index;
+      }
+    }
+
+    if (thread == null || frameIndex == null) {
+      throw 'Global evaluation not currently supported';
+    }
+
+    // TODO(dantup): Handle magic expression '$e' to mean the the exception
+    // for the current thread.
+
+    final result = await _vmService?.evaluateInFrame(
+        thread.isolate.id!, frameIndex, args.expression,
+        disableBreakpoints: true);
+
+    if (result is vm.ErrorRef) {
+      // TODO(dantup): sendError(result.message);
+      throw result.message ?? '<error>';
+    } else if (result is vm.Sentinel) {
+      // TODO(dantup): sendError(result.valueAsString ?? '<collected>');
+      throw result.valueAsString ?? '<collected>';
+    } else if (result is vm.InstanceRef) {
+      // TODO(dantup): Truncation etc.
+      sendResponse(EvaluateResponseBody(
+        // TODO(dantup): Format (eg. quotes around strings).
+        result: _converter.convertVmInstanceRefToDisplayString(result),
+        // TODO(dantup): May need to store `expression` (see Dart-Code DAP).
+        variablesReference:
+            _isSimpleKind(result.kind) ? 0 : thread.storeData(result),
+      ));
+    } else {
+      throw 'Unknown evaluation response type: ${result?.runtimeType}';
+    }
+  }
+
+  @override
   FutureOr<void> initializeRequest(
       Request request,
       InitializeRequestArguments? args,
       void Function(Capabilities) sendResponse) async {
-    // TODO(dantup): Honor things like args?.linesStartAt1!
+    // TODO(dantup): Honor things like args.linesStartAt1!
     sendResponse(Capabilities(
       // TODO(dantup): All of these...
       // exceptionBreakpointFilters: [
@@ -185,14 +234,14 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  FutureOr<void> nextRequest(Request request, NextArguments? args,
+  FutureOr<void> nextRequest(Request request, NextArguments args,
       void Function(void) sendResponse) async {
-    await _isolateManager.resumeThread(args!.threadId, vm.StepOption.kOver);
+    await _isolateManager.resumeThread(args.threadId, vm.StepOption.kOver);
     sendResponse(null);
   }
 
   @override
-  FutureOr<void> scopesRequest(Request request, ScopesArguments? args,
+  FutureOr<void> scopesRequest(Request request, ScopesArguments args,
       void Function(ScopesResponseBody) sendResponse) {
     // TOOD(dantup): Variables + exception!
     sendResponse(ScopesResponseBody(scopes: []));
@@ -201,12 +250,12 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   @override
   FutureOr<void> setBreakpointsRequest(
       Request request,
-      SetBreakpointsArguments? args,
+      SetBreakpointsArguments args,
       void Function(SetBreakpointsResponseBody) sendResponse) async {
-    final path = args?.source.path;
-    final name = args?.source.name;
+    final path = args.source.path;
+    final name = args.source.name;
     final uri = path != null ? Uri.file(path).toString() : name!;
-    final breakpoints = args?.breakpoints ?? [];
+    final breakpoints = args.breakpoints ?? [];
 
     await _isolateManager.setBreakpoints(uri, breakpoints);
 
@@ -218,19 +267,19 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  FutureOr<void> stackTraceRequest(Request request, StackTraceArguments? args,
+  FutureOr<void> stackTraceRequest(Request request, StackTraceArguments args,
       void Function(StackTraceResponseBody) sendResponse) async {
     // How many "extra" frames we claim to have so that the client will
     // let the user fetch them in batches rather than all at once.
     const stackFrameBatchSize = 20;
-    final threadId = args?.threadId;
+    final threadId = args.threadId;
     final thread = _isolateManager._threadsByThreadId[threadId];
     final topFrame = thread?.pauseEvent?.topFrame;
-    final startFrame = args?.startFrame ?? 0;
-    final numFrames = args?.levels ?? 0;
+    final startFrame = args.startFrame ?? 0;
+    final numFrames = args.levels ?? 0;
     var totalFrames = 1;
 
-    if (threadId == null || thread == null) {
+    if (thread == null) {
       throw 'No thread with threadId $threadId';
     }
 
@@ -273,16 +322,16 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   }
 
   @override
-  FutureOr<void> stepInRequest(Request request, StepInArguments? args,
+  FutureOr<void> stepInRequest(Request request, StepInArguments args,
       void Function(void) sendResponse) async {
-    await _isolateManager.resumeThread(args!.threadId, vm.StepOption.kInto);
+    await _isolateManager.resumeThread(args.threadId, vm.StepOption.kInto);
     sendResponse(null);
   }
 
   @override
-  FutureOr<void> stepOutRequest(Request request, StepOutArguments? args,
+  FutureOr<void> stepOutRequest(Request request, StepOutArguments args,
       void Function(void) sendResponse) async {
-    await _isolateManager.resumeThread(args!.threadId, vm.StepOption.kOut);
+    await _isolateManager.resumeThread(args.threadId, vm.StepOption.kOut);
     sendResponse(null);
   }
 
@@ -436,6 +485,17 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     }
   }
 
+  /// Whether [kind] is a simple kind, and does not need to be mapped to a variable.
+  bool _isSimpleKind(String? kind) {
+    return kind == 'String' ||
+        kind == 'Bool' ||
+        kind == 'Int' ||
+        kind == 'Num' ||
+        kind == 'Double' ||
+        kind == 'Null' ||
+        kind == 'Closure';
+  }
+
   Uri _normaliseVmServiceUri(Uri uri) {
     final scheme = uri.scheme.replaceAll('http', 'ws');
     final path = uri.path.endsWith('/ws/') || uri.path.endsWith('/ws')
@@ -572,6 +632,12 @@ class IsolateManager {
       vm.IsolateRef isolate, vm.ObjRef object) async {
     final res = await _adapter._vmService?.getObject(isolate.id!, object.id!);
     return res as T;
+  }
+
+  /// Retrieves some basic data indexed by an integer for use in "reference"
+  /// fields that are round-tripped to the client.
+  _StoredData? getStoredData(int id) {
+    return _storedData[id];
   }
 
   /// Handles Isolate and Debug events

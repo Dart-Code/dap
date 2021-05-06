@@ -29,7 +29,6 @@ void four() => five();
 void five() {
   print('Hello!'); // BREAKPOINT
 }
-
     ''');
     final breakpointLine = lineWith(testFile, '// BREAKPOINT');
 

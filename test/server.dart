@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:math';
 
 import 'package:dap/src/adapters/dart.dart';
 import 'package:dap/src/debug_adapter.dart';
