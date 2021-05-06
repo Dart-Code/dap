@@ -21,8 +21,9 @@ final Future<String> testApplicationsDirectory = (() async => path.join(
     'test_applications'))();
 
 Future<File> createTestFile(String content) async {
-  final testFile = File(
-      path.join(await testApplicationsDirectory, 'automated_test_file.dart'));
+  final testAppDir = await testApplicationsDirectory;
+  Directory(testAppDir).createSync();
+  final testFile = File(path.join(testAppDir, 'automated_test_file.dart'));
   testFile.writeAsStringSync(content);
   return testFile;
 }

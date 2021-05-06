@@ -7,14 +7,20 @@ void main() {
   test('Server runs a simple script in debug mode', () async {
     final da = await DapTestServer.forEnvironment();
     final client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) async {
+  print('Hello!');
+  print('World!');
+  print('args: $args');
+}
+    ''');
     final outputEventsFuture = client.outputEvents.toList();
-
-    await client.initialize();
 
     // Launch script and wait for termination.
     await Future.wait([
       client.event('terminated'),
-      client.launch('hello_world.dart', args: ['one', 'two'])
+      client.initialize(),
+      client.launch(testFile.path, args: ['one', 'two'])
     ], eagerError: true);
 
     // Check expected output events were recieved.
