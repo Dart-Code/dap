@@ -76,9 +76,9 @@ class DapTestClient {
     return responses[1] as Response; // Return the initialize response.
   }
 
-  Future<void> launch(String program,
+  Future<Response> launch(String program,
       {List<String>? args, FutureOr<String>? cwd, bool? noDebug}) async {
-    await sendRequest(
+    return sendRequest(
       DartLaunchRequestArguments(
         noDebug: noDebug,
         program: program,

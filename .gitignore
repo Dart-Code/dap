@@ -8,3 +8,4 @@
 build/
 coverage/
 logs/
+test/test_applications/automated_test_file.dart

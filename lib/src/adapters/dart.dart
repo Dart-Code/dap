@@ -81,6 +81,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       Request request,
       InitializeRequestArguments? args,
       void Function(Capabilities) sendResponse) async {
+    // TODO(dantup): Honor things like args?.linesStartAt1!
     sendResponse(Capabilities(
       // TODO(dantup): All of these...
       // exceptionBreakpointFilters: [

@@ -8,7 +8,7 @@ import 'package:path/path.dart' as path;
 
 void main(List<String> args) {
   runZonedGuarded(
-    () {
+    () async {
       // Isolate.current.setErrorsFatal(false);
       // TODO(dantup): Handle picking different debug adapters for Dart/Flutter/Testing.
       final channel =
