@@ -16,7 +16,6 @@ import 'test_utils.dart';
 abstract class DapTestServer {
   static var _logNumber = 1;
 
-  static final _rnd = Random();
   final DapTestClient client;
 
   DapTestServer._(
@@ -34,7 +33,7 @@ abstract class DapTestServer {
     Directory(logsDir).createSync();
 
     final logFile = File(
-        path.join(logsDir, 'dap_${_rnd.nextInt(10000)}_${_logNumber++}.txt'));
+        path.join(logsDir, 'dap_${rnd.nextInt(10000)}_${_logNumber++}.txt'));
     print('      Logging to ${logFile.path}');
     final logger = FileLogger(logFile);
 

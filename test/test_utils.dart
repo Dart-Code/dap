@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
 import 'client.dart';
+
+final rnd = Random();
 
 final Future<String> logsDirectory = (() async => path.join(
     path.dirname(path.dirname(
@@ -22,8 +25,10 @@ final Future<String> testApplicationsDirectory = (() async => path.join(
 
 Future<File> createTestFile(String content) async {
   final testAppDir = await testApplicationsDirectory;
-  Directory(testAppDir).createSync();
-  final testFile = File(path.join(testAppDir, 'automated_test_file.dart'));
+  final automatedTestDir = path.join(testAppDir, 'automated');
+  Directory(automatedTestDir).createSync(recursive: true);
+  final testFile =
+      File(path.join(automatedTestDir, 'test_file_${rnd.nextInt(10000)}.dart'));
   testFile.writeAsStringSync(content);
   return testFile;
 }
