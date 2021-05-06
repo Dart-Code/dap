@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:dap/src/converter.dart';
 import 'package:dap/src/debug_adapter.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart' hide Event;
 import 'package:dap/src/logging.dart';
-import 'package:dap/src/mapping.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
@@ -15,8 +15,10 @@ import 'package:vm_service/vm_service.dart' as vm;
 /// A [DebugAdapter] implementation for running Dart CLI scripts.
 class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   late IsolateManager _isolateManager;
-  Process? _process;
+  late ProtocolConverter _converter;
   var _debug = false;
+  Process? _process;
+  String? cwd;
   File? _vmServiceInfoFile;
   StreamSubscription<FileSystemEvent>? _vmServiceInfoFileWatcher;
   final _tmpDir = Directory.systemTemp;
@@ -37,6 +39,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   DartDebugAdapter(LspByteStreamServerChannel channel, Logger logger)
       : super(channel, logger) {
     _isolateManager = IsolateManager(this);
+    _converter = ProtocolConverter(this);
   }
 
   FutureOr<void> attachRequest(
@@ -116,6 +119,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       throw Exception('launchRequest requires non-null arguments');
     }
     _debug = args.noDebug != true;
+    cwd = args.cwd;
 
     if (_debug) {
       // TODO(dantup): For some DAs (test, Flutter) we can't use
@@ -169,7 +173,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     final process = await Process.start(
       vmPath,
       processArgs,
-      workingDirectory: args.cwd,
+      workingDirectory: cwd,
     );
     _process = process;
 
@@ -238,13 +242,30 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     // If the request is only for the top frame, we can satisfy it from the
     // threads `pauseEvent.topFrame`.
     if (startFrame == 0 && numFrames == 1 && topFrame != null) {
-      stackFrames
-          .add(await convertStackFrame(thread, topFrame, isTopFrame: true));
       totalFrames = 1 + stackFrameBatchSize;
+      stackFrames.add(await _converter
+          .convertVmToDapStackFrame(thread, topFrame, isTopFrame: true));
     } else {
-      // TODO(dantup): Support more than top frame!
+      // Otherwise, send the request on to the VM.
+      final limit = startFrame + numFrames;
+      final stack =
+          await _vmService?.getStack(thread.isolate.id!, limit: limit);
+      final frames = stack?.frames;
 
-      // totalFrames = isTruncated ? framesRecieved + stackFrameBatch : framesRecieved
+      if (stack != null && frames != null) {
+        // When the call stack is truncated, we always add [stackFrameBatchSize]
+        // to the count, indicating to the client there are more frames and
+        // the size of the batch they should request when "loading more".
+        totalFrames = (stack.truncated ?? false)
+            ? frames.length + stackFrameBatchSize
+            : frames.length;
+
+        final frameSubset = frames.sublist(startFrame);
+        stackFrames.addAll(await Future.wait(frameSubset.mapIndexed(
+            (index, frame) async => _converter.convertVmToDapStackFrame(
+                thread, frame,
+                isTopFrame: startFrame == 0 && index == 0))));
+      }
     }
 
     sendResponse(StackTraceResponseBody(

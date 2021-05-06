@@ -48,12 +48,7 @@ extension DapTestClientExtensions on DapTestClient {
     final stop = StoppedEventBody.fromJson(e.body as Map<String, Object?>);
     expect(stop.reason, equals(reason));
 
-    final response =
-        await stackTrace(stop.threadId!, startFrame: 0, numFrames: 1);
-    expect(response.success, isTrue);
-    expect(response.command, equals('stackTrace'));
-    final result =
-        StackTraceResponseBody.fromJson(response.body as Map<String, Object?>);
+    final result = await getStack(stop.threadId!, startFrame: 0, numFrames: 1);
     expect(result.stackFrames, hasLength(1));
     final frame = result.stackFrames[0];
 
@@ -65,6 +60,43 @@ extension DapTestClientExtensions on DapTestClient {
     }
 
     return stop;
+  }
+
+  /// A helper that verifies the call stack matches [expectedCallLines], a text
+  /// representation built from frame names, paths, presentationHints, line/col.
+  ///
+  /// Only checks from [startFrame] for the number of lines provided. Additional
+  /// frames beyond this are not checked.
+  Future<StackTraceResponseBody> expectCallStack(
+      int threadId, String expectedCallStack,
+      {required int startFrame}) async {
+    final expectedLines =
+        expectedCallStack.trim().split('\n').map((l) => l.trim()).toList();
+
+    final stack = await getStack(threadId,
+        startFrame: startFrame, numFrames: expectedLines.length);
+
+    // Format the frames into a simple text representation that's easy to
+    // maintain in tests.
+    final actual = stack.stackFrames.map((f) {
+      final buffer = StringBuffer();
+      final source = f.source;
+
+      buffer.write(f.name);
+      if (source != null) {
+        buffer.write(' ${source.name ?? source.path}');
+      }
+      buffer.write(':${f.line}:${f.column}');
+      if (f.presentationHint != null) {
+        buffer.write(' (${f.presentationHint})');
+      }
+
+      return buffer.toString();
+    });
+
+    expect(actual.join('\n'), equals(expectedLines.join('\n')));
+
+    return stack;
   }
 
   /// Sets a breakpoint at [line] in [file] and expects to hit it after running
@@ -83,5 +115,15 @@ extension DapTestClientExtensions on DapTestClient {
     ], eagerError: true);
 
     return stop;
+  }
+
+  Future<StackTraceResponseBody> getStack(int threadId,
+      {required int startFrame, required int numFrames}) async {
+    final response = await stackTrace(threadId,
+        startFrame: startFrame, numFrames: numFrames);
+    expect(response.success, isTrue);
+    expect(response.command, equals('stackTrace'));
+    return StackTraceResponseBody.fromJson(
+        response.body as Map<String, Object?>);
   }
 }

@@ -1,4 +1,3 @@
-import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:test/test.dart';
 
 import '../client.dart';
@@ -25,16 +24,7 @@ void main(List<String> args) async {
     ''');
     final breakpointLine = lineWith(testFile, '// BREAKPOINT');
 
-    await Future.wait([
-      client.expectedStop('breakpoint', file: testFile, line: breakpointLine),
-      client.initialize(),
-      client.sendRequest(
-        SetBreakpointsArguments(
-            source: Source(path: testFile.path),
-            breakpoints: [SourceBreakpoint(line: breakpointLine)]),
-      ),
-      client.launch(testFile.path),
-    ], eagerError: true);
+    await client.hitBreakpoint(testFile, breakpointLine);
   });
 
   test('stops at a line breakpoint and can be resumed', () async {
