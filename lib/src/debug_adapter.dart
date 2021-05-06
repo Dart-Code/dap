@@ -136,6 +136,9 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   FutureOr<void> threadsRequest(Request request, void args,
       void Function(ThreadsResponseBody) sendResponse);
 
+  FutureOr<void> variablesRequest(Request request, VariablesArguments args,
+      void Function(VariablesResponseBody) sendResponse);
+
   /// Handles incoming messages from the client editor.
   void _handleIncomingMessage(ProtocolMessage message) {
     if (message is Request) {
@@ -191,6 +194,8 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       handle(request, stepInRequest, StepInArguments.fromJson);
     } else if (request.command == 'stepOut') {
       handle(request, stepOutRequest, StepOutArguments.fromJson);
+    } else if (request.command == 'variables') {
+      handle(request, variablesRequest, VariablesArguments.fromJson);
     } else if (request.command == 'evaluate') {
       handle(request, evaluateRequest, EvaluateArguments.fromJson);
     } else {

@@ -35,4 +35,34 @@ void main(List<String> args) {
     await client.expectEvalResult(topFrameId, 'a.toString()', '"1"');
     await client.expectEvalResult(topFrameId, 'a * b', '2');
   });
+
+  test('evaluates complex expressions expressions', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  print('Hello!'); // BREAKPOINT
+}
+    ''');
+    final breakpointLine = lineWith(testFile, '// BREAKPOINT');
+
+    final stop = await client.hitBreakpoint(testFile, breakpointLine);
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
+    final topFrameId = stack.stackFrames.first.id;
+
+    final result = await client.expectEvalResult(
+        topFrameId, 'DateTime(2000, 1, 1)', 'DateTime');
+    expect(result.variablesReference, greaterThan(0));
+
+    // Ensure the variablesReference is valid.
+    final variable = await client.variables(result.variablesReference);
+    expect(variable.success, true);
+  });
+
+  test(
+      'evaluates complex expressions expressions with evaluateToStringInDebugViews=true',
+      () {
+    // TODO(dantup): !
+  }, skip: true);
 }

@@ -117,6 +117,56 @@ extension DapTestClientExtensions on DapTestClient {
     return stack;
   }
 
+  /// A helper that verifies the variables list matches [expectedVariables], a
+  /// text representation built from the name/values.
+  Future<VariablesResponseBody> expectVariables(
+      int variablesReference, String expectedVariables,
+      {int? start, int? count, ignorePrivate = true}) async {
+    final expectedLines =
+        expectedVariables.trim().split('\n').map((l) => l.trim()).toList();
+
+    final variables =
+        await getVariables(variablesReference, start: start, count: count);
+
+    // Format the variables into a simple text representation that's easy to
+    // maintain in tests.
+    final actual = variables.variables
+        .where((v) => ignorePrivate ? !v.name.startsWith('_') : true)
+        .map((v) {
+      final buffer = StringBuffer();
+      final evaluateName = v.evaluateName;
+      final indexedVariables = v.indexedVariables;
+      final namedVariables = v.namedVariables;
+      final value = v.value;
+      final type = v.type;
+      final presentationHint = v.presentationHint;
+
+      buffer.write(v.name);
+      if (evaluateName != null) {
+        buffer.write(', eval: $evaluateName');
+      }
+      if (indexedVariables != null) {
+        buffer.write(', $indexedVariables items');
+      }
+      if (namedVariables != null) {
+        buffer.write(', $namedVariables named items');
+      }
+      buffer.write(': $value');
+      if (type != null) {
+        buffer.write(' ($type)');
+      }
+      if (presentationHint != null) {
+        buffer.write(' ($presentationHint)');
+      }
+
+      return buffer.toString();
+    });
+
+    expect(actual.join('\n'), equals(expectedLines.join('\n')));
+
+    return variables;
+  }
+
   /// Sets a breakpoint at [line] in [file] and expects to hit it after running
   /// the script.
   Future<StoppedEventBody> hitBreakpoint(File file, int line) async {
@@ -142,6 +192,16 @@ extension DapTestClientExtensions on DapTestClient {
     expect(response.success, isTrue);
     expect(response.command, equals('stackTrace'));
     return StackTraceResponseBody.fromJson(
+        response.body as Map<String, Object?>);
+  }
+
+  Future<VariablesResponseBody> getVariables(int variablesReference,
+      {int? start, int? count}) async {
+    final response =
+        await variables(variablesReference, start: start, count: count);
+    expect(response.success, isTrue);
+    expect(response.command, equals('variables'));
+    return VariablesResponseBody.fromJson(
         response.body as Map<String, Object?>);
   }
 }

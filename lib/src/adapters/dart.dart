@@ -121,7 +121,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
         result: _converter.convertVmInstanceRefToDisplayString(result),
         // TODO(dantup): May need to store `expression` (see Dart-Code DAP).
         variablesReference:
-            _isSimpleKind(result.kind) ? 0 : thread.storeData(result),
+            isSimpleKind(result.kind) ? 0 : thread.storeData(result),
       ));
     } else {
       throw 'Unknown evaluation response type: ${result?.runtimeType}';
@@ -356,6 +356,50 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     sendResponse(ThreadsResponseBody(threads: threads));
   }
 
+  @override
+  FutureOr<void> variablesRequest(Request request, VariablesArguments args,
+      void Function(VariablesResponseBody) sendResponse) async {
+    final childStart = args.start;
+    final childCount = args.count;
+    final storedData = _isolateManager.getStoredData(args.variablesReference);
+    if (storedData == null) {
+      throw 'variablesReference is no longer valid';
+    }
+    final thread = storedData.thread;
+    final data = storedData.data;
+    final vmData = data is vm.Response ? data : null;
+    final variables = <Variable>[];
+
+    if (vmData is vm.Frame) {
+      // TODO(dantup): For Variables list
+    } else if (vmData is vm.MapAssociation) {
+      // TODO(dantup): Maps
+    } else if (vmData is vm.ObjRef) {
+      final object =
+          await _isolateManager.getObject(storedData.thread.isolate, vmData);
+
+      if (object is vm.Sentinel) {
+        variables.add(Variable(
+          name: '<eval error>',
+          value: object.valueAsString.toString(),
+          variablesReference: 0,
+        ));
+      } else if (object is vm.Instance) {
+        variables.addAll(_converter.convertVmInstanceToVariablesList(
+            thread, object,
+            startItem: childStart, numItems: childCount));
+      } else {
+        variables.add(Variable(
+          name: '<eval error>',
+          value: object.runtimeType.toString(),
+          variablesReference: 0,
+        ));
+      }
+    }
+
+    sendResponse(VariablesResponseBody(variables: variables));
+  }
+
   Future<void> _connectDebugger(Uri uri) async {
     uri = _normaliseVmServiceUri(uri);
     logger.log('Connecting to debugger at $uri');
@@ -483,17 +527,6 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       // so just ignore and try again on the next event.
       // TODO(dantup): Log these somewhere to aid debugging?
     }
-  }
-
-  /// Whether [kind] is a simple kind, and does not need to be mapped to a variable.
-  bool _isSimpleKind(String? kind) {
-    return kind == 'String' ||
-        kind == 'Bool' ||
-        kind == 'Int' ||
-        kind == 'Num' ||
-        kind == 'Double' ||
-        kind == 'Null' ||
-        kind == 'Closure';
   }
 
   Uri _normaliseVmServiceUri(Uri uri) {

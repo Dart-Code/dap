@@ -49,13 +49,19 @@ void five() {
     );
   });
 
-  test('marks SDK sources as external code', () {}, skip: true);
-  test('marks external packages as external code', () {}, skip: true);
+  test('marks SDK sources as external code', () {
+    // TODO(dantup): !
+  }, skip: true);
+  test('marks external packages as external code', () {
+    // TODO(dantup): !
+  }, skip: true);
   test('does not mark SDK sources as external code if debugSdkLibraries=true',
-      () {},
-      skip: true);
+      () {
+    // TODO(dantup): !
+  }, skip: true);
   test(
       'does not mark external packages as external code if debugExternalPackageLibraries=true',
-      () {},
-      skip: true);
+      () {
+    // TODO(dantup): !
+  }, skip: true);
 }

@@ -125,6 +125,11 @@ class DapTestClient {
 
   Future<Response> terminate() => sendRequest(TerminateArguments());
 
+  Future<Response> variables(int variablesReference,
+          {int? start, int? count}) =>
+      sendRequest(VariablesArguments(
+          variablesReference: variablesReference, start: start, count: count));
+
   /// Prints a warning if [future] takes longer than [_requestWarningDuration]
   /// to complete.
   ///
