@@ -475,7 +475,12 @@ class CodeGenerator {
     for (final entry in properties.entries.sortedBy((e) => e.key)) {
       final propertyName = entry.key;
       final fieldName = _dartSafeName(propertyName);
-      buffer.writeIndentedln("'$propertyName': $fieldName, ");
+      final isOptional = !type.requiresField(propertyName);
+      buffer.writeIndented('');
+      if (isOptional) {
+        buffer.write('if ($fieldName != null) ');
+      }
+      buffer.writeln("'$propertyName': $fieldName, ");
     }
     buffer
       ..outdent()

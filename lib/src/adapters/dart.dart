@@ -518,12 +518,12 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         ...super.toJson(),
         'dartSdkPath': dartSdkPath,
         'program': program,
-        'args': args,
-        'cwd': cwd,
-        'vmServiceInfoFile': vmServiceInfoFile,
-        'vmServicePort': vmServicePort,
-        'vmAdditionalArgs': vmAdditionalArgs,
-        'enableAsserts': enableAsserts,
+        if (args != null) 'args': args,
+        if (cwd != null) 'cwd': cwd,
+        if (vmServiceInfoFile != null) 'vmServiceInfoFile': vmServiceInfoFile,
+        if (vmServicePort != null) 'vmServicePort': vmServicePort,
+        if (vmAdditionalArgs != null) 'vmAdditionalArgs': vmAdditionalArgs,
+        if (enableAsserts != null) 'enableAsserts': enableAsserts,
       };
 
   static DartLaunchRequestArguments fromJson(Map<String, Object?> obj) =>

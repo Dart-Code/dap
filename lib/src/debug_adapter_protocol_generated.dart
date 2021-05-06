@@ -28,7 +28,7 @@ class AttachRequestArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    '__restart': restart, 
+    if (restart != null) '__restart': restart, 
   };
 }
 
@@ -166,15 +166,15 @@ class Breakpoint {
   }
 
   Map<String, Object?> toJson() => {
-    'column': column, 
-    'endColumn': endColumn, 
-    'endLine': endLine, 
-    'id': id, 
-    'instructionReference': instructionReference, 
-    'line': line, 
-    'message': message, 
-    'offset': offset, 
-    'source': source, 
+    if (column != null) 'column': column, 
+    if (endColumn != null) 'endColumn': endColumn, 
+    if (endLine != null) 'endLine': endLine, 
+    if (id != null) 'id': id, 
+    if (instructionReference != null) 'instructionReference': instructionReference, 
+    if (line != null) 'line': line, 
+    if (message != null) 'message': message, 
+    if (offset != null) 'offset': offset, 
+    if (source != null) 'source': source, 
     'verified': verified, 
   };
 }
@@ -226,9 +226,9 @@ class BreakpointLocation {
   }
 
   Map<String, Object?> toJson() => {
-    'column': column, 
-    'endColumn': endColumn, 
-    'endLine': endLine, 
+    if (column != null) 'column': column, 
+    if (endColumn != null) 'endColumn': endColumn, 
+    if (endLine != null) 'endLine': endLine, 
     'line': line, 
   };
 }
@@ -294,9 +294,9 @@ class BreakpointLocationsArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'column': column, 
-    'endColumn': endColumn, 
-    'endLine': endLine, 
+    if (column != null) 'column': column, 
+    if (endColumn != null) 'endColumn': endColumn, 
+    if (endLine != null) 'endLine': endLine, 
     'line': line, 
     'source': source, 
   };
@@ -379,8 +379,8 @@ class CancelArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'progressId': progressId, 
-    'requestId': requestId, 
+    if (progressId != null) 'progressId': progressId, 
+    if (requestId != null) 'requestId': requestId, 
   };
 }
 
@@ -717,43 +717,43 @@ class Capabilities {
   }
 
   Map<String, Object?> toJson() => {
-    'additionalModuleColumns': additionalModuleColumns, 
-    'completionTriggerCharacters': completionTriggerCharacters, 
-    'exceptionBreakpointFilters': exceptionBreakpointFilters, 
-    'supportSuspendDebuggee': supportSuspendDebuggee, 
-    'supportTerminateDebuggee': supportTerminateDebuggee, 
-    'supportedChecksumAlgorithms': supportedChecksumAlgorithms, 
-    'supportsBreakpointLocationsRequest': supportsBreakpointLocationsRequest, 
-    'supportsCancelRequest': supportsCancelRequest, 
-    'supportsClipboardContext': supportsClipboardContext, 
-    'supportsCompletionsRequest': supportsCompletionsRequest, 
-    'supportsConditionalBreakpoints': supportsConditionalBreakpoints, 
-    'supportsConfigurationDoneRequest': supportsConfigurationDoneRequest, 
-    'supportsDataBreakpoints': supportsDataBreakpoints, 
-    'supportsDelayedStackTraceLoading': supportsDelayedStackTraceLoading, 
-    'supportsDisassembleRequest': supportsDisassembleRequest, 
-    'supportsEvaluateForHovers': supportsEvaluateForHovers, 
-    'supportsExceptionFilterOptions': supportsExceptionFilterOptions, 
-    'supportsExceptionInfoRequest': supportsExceptionInfoRequest, 
-    'supportsExceptionOptions': supportsExceptionOptions, 
-    'supportsFunctionBreakpoints': supportsFunctionBreakpoints, 
-    'supportsGotoTargetsRequest': supportsGotoTargetsRequest, 
-    'supportsHitConditionalBreakpoints': supportsHitConditionalBreakpoints, 
-    'supportsInstructionBreakpoints': supportsInstructionBreakpoints, 
-    'supportsLoadedSourcesRequest': supportsLoadedSourcesRequest, 
-    'supportsLogPoints': supportsLogPoints, 
-    'supportsModulesRequest': supportsModulesRequest, 
-    'supportsReadMemoryRequest': supportsReadMemoryRequest, 
-    'supportsRestartFrame': supportsRestartFrame, 
-    'supportsRestartRequest': supportsRestartRequest, 
-    'supportsSetExpression': supportsSetExpression, 
-    'supportsSetVariable': supportsSetVariable, 
-    'supportsStepBack': supportsStepBack, 
-    'supportsStepInTargetsRequest': supportsStepInTargetsRequest, 
-    'supportsSteppingGranularity': supportsSteppingGranularity, 
-    'supportsTerminateRequest': supportsTerminateRequest, 
-    'supportsTerminateThreadsRequest': supportsTerminateThreadsRequest, 
-    'supportsValueFormattingOptions': supportsValueFormattingOptions, 
+    if (additionalModuleColumns != null) 'additionalModuleColumns': additionalModuleColumns, 
+    if (completionTriggerCharacters != null) 'completionTriggerCharacters': completionTriggerCharacters, 
+    if (exceptionBreakpointFilters != null) 'exceptionBreakpointFilters': exceptionBreakpointFilters, 
+    if (supportSuspendDebuggee != null) 'supportSuspendDebuggee': supportSuspendDebuggee, 
+    if (supportTerminateDebuggee != null) 'supportTerminateDebuggee': supportTerminateDebuggee, 
+    if (supportedChecksumAlgorithms != null) 'supportedChecksumAlgorithms': supportedChecksumAlgorithms, 
+    if (supportsBreakpointLocationsRequest != null) 'supportsBreakpointLocationsRequest': supportsBreakpointLocationsRequest, 
+    if (supportsCancelRequest != null) 'supportsCancelRequest': supportsCancelRequest, 
+    if (supportsClipboardContext != null) 'supportsClipboardContext': supportsClipboardContext, 
+    if (supportsCompletionsRequest != null) 'supportsCompletionsRequest': supportsCompletionsRequest, 
+    if (supportsConditionalBreakpoints != null) 'supportsConditionalBreakpoints': supportsConditionalBreakpoints, 
+    if (supportsConfigurationDoneRequest != null) 'supportsConfigurationDoneRequest': supportsConfigurationDoneRequest, 
+    if (supportsDataBreakpoints != null) 'supportsDataBreakpoints': supportsDataBreakpoints, 
+    if (supportsDelayedStackTraceLoading != null) 'supportsDelayedStackTraceLoading': supportsDelayedStackTraceLoading, 
+    if (supportsDisassembleRequest != null) 'supportsDisassembleRequest': supportsDisassembleRequest, 
+    if (supportsEvaluateForHovers != null) 'supportsEvaluateForHovers': supportsEvaluateForHovers, 
+    if (supportsExceptionFilterOptions != null) 'supportsExceptionFilterOptions': supportsExceptionFilterOptions, 
+    if (supportsExceptionInfoRequest != null) 'supportsExceptionInfoRequest': supportsExceptionInfoRequest, 
+    if (supportsExceptionOptions != null) 'supportsExceptionOptions': supportsExceptionOptions, 
+    if (supportsFunctionBreakpoints != null) 'supportsFunctionBreakpoints': supportsFunctionBreakpoints, 
+    if (supportsGotoTargetsRequest != null) 'supportsGotoTargetsRequest': supportsGotoTargetsRequest, 
+    if (supportsHitConditionalBreakpoints != null) 'supportsHitConditionalBreakpoints': supportsHitConditionalBreakpoints, 
+    if (supportsInstructionBreakpoints != null) 'supportsInstructionBreakpoints': supportsInstructionBreakpoints, 
+    if (supportsLoadedSourcesRequest != null) 'supportsLoadedSourcesRequest': supportsLoadedSourcesRequest, 
+    if (supportsLogPoints != null) 'supportsLogPoints': supportsLogPoints, 
+    if (supportsModulesRequest != null) 'supportsModulesRequest': supportsModulesRequest, 
+    if (supportsReadMemoryRequest != null) 'supportsReadMemoryRequest': supportsReadMemoryRequest, 
+    if (supportsRestartFrame != null) 'supportsRestartFrame': supportsRestartFrame, 
+    if (supportsRestartRequest != null) 'supportsRestartRequest': supportsRestartRequest, 
+    if (supportsSetExpression != null) 'supportsSetExpression': supportsSetExpression, 
+    if (supportsSetVariable != null) 'supportsSetVariable': supportsSetVariable, 
+    if (supportsStepBack != null) 'supportsStepBack': supportsStepBack, 
+    if (supportsStepInTargetsRequest != null) 'supportsStepInTargetsRequest': supportsStepInTargetsRequest, 
+    if (supportsSteppingGranularity != null) 'supportsSteppingGranularity': supportsSteppingGranularity, 
+    if (supportsTerminateRequest != null) 'supportsTerminateRequest': supportsTerminateRequest, 
+    if (supportsTerminateThreadsRequest != null) 'supportsTerminateThreadsRequest': supportsTerminateThreadsRequest, 
+    if (supportsValueFormattingOptions != null) 'supportsValueFormattingOptions': supportsValueFormattingOptions, 
   };
 }
 
@@ -873,10 +873,10 @@ class ColumnDescriptor {
 
   Map<String, Object?> toJson() => {
     'attributeName': attributeName, 
-    'format': format, 
+    if (format != null) 'format': format, 
     'label': label, 
-    'type': type, 
-    'width': width, 
+    if (type != null) 'type': type, 
+    if (width != null) 'width': width, 
   };
 }
 
@@ -970,13 +970,13 @@ class CompletionItem {
 
   Map<String, Object?> toJson() => {
     'label': label, 
-    'length': length, 
-    'selectionLength': selectionLength, 
-    'selectionStart': selectionStart, 
-    'sortText': sortText, 
-    'start': start, 
-    'text': text, 
-    'type': type, 
+    if (length != null) 'length': length, 
+    if (selectionLength != null) 'selectionLength': selectionLength, 
+    if (selectionStart != null) 'selectionStart': selectionStart, 
+    if (sortText != null) 'sortText': sortText, 
+    if (start != null) 'start': start, 
+    if (text != null) 'text': text, 
+    if (type != null) 'type': type, 
   };
 }
 
@@ -1051,8 +1051,8 @@ class CompletionsArguments extends RequestArguments {
 
   Map<String, Object?> toJson() => {
     'column': column, 
-    'frameId': frameId, 
-    'line': line, 
+    if (frameId != null) 'frameId': frameId, 
+    if (line != null) 'line': line, 
     'text': text, 
   };
 }
@@ -1276,10 +1276,10 @@ class DataBreakpoint {
   }
 
   Map<String, Object?> toJson() => {
-    'accessType': accessType, 
-    'condition': condition, 
+    if (accessType != null) 'accessType': accessType, 
+    if (condition != null) 'condition': condition, 
     'dataId': dataId, 
-    'hitCondition': hitCondition, 
+    if (hitCondition != null) 'hitCondition': hitCondition, 
   };
 }
 
@@ -1339,7 +1339,7 @@ class DataBreakpointInfoArguments extends RequestArguments {
 
   Map<String, Object?> toJson() => {
     'name': name, 
-    'variablesReference': variablesReference, 
+    if (variablesReference != null) 'variablesReference': variablesReference, 
   };
 }
 
@@ -1445,10 +1445,10 @@ class DisassembleArguments extends RequestArguments {
 
   Map<String, Object?> toJson() => {
     'instructionCount': instructionCount, 
-    'instructionOffset': instructionOffset, 
+    if (instructionOffset != null) 'instructionOffset': instructionOffset, 
     'memoryReference': memoryReference, 
-    'offset': offset, 
-    'resolveSymbols': resolveSymbols, 
+    if (offset != null) 'offset': offset, 
+    if (resolveSymbols != null) 'resolveSymbols': resolveSymbols, 
   };
 }
 
@@ -1582,14 +1582,14 @@ class DisassembledInstruction {
 
   Map<String, Object?> toJson() => {
     'address': address, 
-    'column': column, 
-    'endColumn': endColumn, 
-    'endLine': endLine, 
+    if (column != null) 'column': column, 
+    if (endColumn != null) 'endColumn': endColumn, 
+    if (endLine != null) 'endLine': endLine, 
     'instruction': instruction, 
-    'instructionBytes': instructionBytes, 
-    'line': line, 
-    'location': location, 
-    'symbol': symbol, 
+    if (instructionBytes != null) 'instructionBytes': instructionBytes, 
+    if (line != null) 'line': line, 
+    if (location != null) 'location': location, 
+    if (symbol != null) 'symbol': symbol, 
   };
 }
 
@@ -1642,9 +1642,9 @@ class DisconnectArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'restart': restart, 
-    'suspendDebuggee': suspendDebuggee, 
-    'terminateDebuggee': terminateDebuggee, 
+    if (restart != null) 'restart': restart, 
+    if (suspendDebuggee != null) 'suspendDebuggee': suspendDebuggee, 
+    if (terminateDebuggee != null) 'terminateDebuggee': terminateDebuggee, 
   };
 }
 
@@ -1775,10 +1775,10 @@ class EvaluateArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'context': context, 
+    if (context != null) 'context': context, 
     'expression': expression, 
-    'format': format, 
-    'frameId': frameId, 
+    if (format != null) 'format': format, 
+    if (frameId != null) 'frameId': frameId, 
   };
 }
 
@@ -1861,7 +1861,7 @@ class Event extends ProtocolMessage {
   @override
   Map<String, Object?> toJson() => {
     ...super.toJson(),
-    'body': body, 
+    if (body != null) 'body': body, 
     'event': event, 
   };
 }
@@ -1958,12 +1958,12 @@ class ExceptionBreakpointsFilter {
   }
 
   Map<String, Object?> toJson() => {
-    'conditionDescription': conditionDescription, 
-    'default': defaultValue, 
-    'description': description, 
+    if (conditionDescription != null) 'conditionDescription': conditionDescription, 
+    if (defaultValue != null) 'default': defaultValue, 
+    if (description != null) 'description': description, 
     'filter': filter, 
     'label': label, 
-    'supportsCondition': supportsCondition, 
+    if (supportsCondition != null) 'supportsCondition': supportsCondition, 
   };
 }
 
@@ -2028,12 +2028,12 @@ class ExceptionDetails {
   }
 
   Map<String, Object?> toJson() => {
-    'evaluateName': evaluateName, 
-    'fullTypeName': fullTypeName, 
-    'innerException': innerException, 
-    'message': message, 
-    'stackTrace': stackTrace, 
-    'typeName': typeName, 
+    if (evaluateName != null) 'evaluateName': evaluateName, 
+    if (fullTypeName != null) 'fullTypeName': fullTypeName, 
+    if (innerException != null) 'innerException': innerException, 
+    if (message != null) 'message': message, 
+    if (stackTrace != null) 'stackTrace': stackTrace, 
+    if (typeName != null) 'typeName': typeName, 
   };
 }
 
@@ -2073,7 +2073,7 @@ class ExceptionFilterOptions {
   }
 
   Map<String, Object?> toJson() => {
-    'condition': condition, 
+    if (condition != null) 'condition': condition, 
     'filterId': filterId, 
   };
 }
@@ -2183,7 +2183,7 @@ class ExceptionOptions {
 
   Map<String, Object?> toJson() => {
     'breakMode': breakMode, 
-    'path': path, 
+    if (path != null) 'path': path, 
   };
 }
 
@@ -2226,7 +2226,7 @@ class ExceptionPathSegment {
 
   Map<String, Object?> toJson() => {
     'names': names, 
-    'negate': negate, 
+    if (negate != null) 'negate': negate, 
   };
 }
 
@@ -2275,8 +2275,8 @@ class FunctionBreakpoint {
   }
 
   Map<String, Object?> toJson() => {
-    'condition': condition, 
-    'hitCondition': hitCondition, 
+    if (condition != null) 'condition': condition, 
+    if (hitCondition != null) 'hitCondition': hitCondition, 
     'name': name, 
   };
 }
@@ -2426,11 +2426,11 @@ class GotoTarget {
   }
 
   Map<String, Object?> toJson() => {
-    'column': column, 
-    'endColumn': endColumn, 
-    'endLine': endLine, 
+    if (column != null) 'column': column, 
+    if (endColumn != null) 'endColumn': endColumn, 
+    if (endLine != null) 'endLine': endLine, 
     'id': id, 
-    'instructionPointerReference': instructionPointerReference, 
+    if (instructionPointerReference != null) 'instructionPointerReference': instructionPointerReference, 
     'label': label, 
     'line': line, 
   };
@@ -2475,7 +2475,7 @@ class GotoTargetsArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'column': column, 
+    if (column != null) 'column': column, 
     'line': line, 
     'source': source, 
   };
@@ -2633,18 +2633,18 @@ class InitializeRequestArguments extends RequestArguments {
 
   Map<String, Object?> toJson() => {
     'adapterID': adapterID, 
-    'clientID': clientID, 
-    'clientName': clientName, 
-    'columnsStartAt1': columnsStartAt1, 
-    'linesStartAt1': linesStartAt1, 
-    'locale': locale, 
-    'pathFormat': pathFormat, 
-    'supportsInvalidatedEvent': supportsInvalidatedEvent, 
-    'supportsMemoryReferences': supportsMemoryReferences, 
-    'supportsProgressReporting': supportsProgressReporting, 
-    'supportsRunInTerminalRequest': supportsRunInTerminalRequest, 
-    'supportsVariablePaging': supportsVariablePaging, 
-    'supportsVariableType': supportsVariableType, 
+    if (clientID != null) 'clientID': clientID, 
+    if (clientName != null) 'clientName': clientName, 
+    if (columnsStartAt1 != null) 'columnsStartAt1': columnsStartAt1, 
+    if (linesStartAt1 != null) 'linesStartAt1': linesStartAt1, 
+    if (locale != null) 'locale': locale, 
+    if (pathFormat != null) 'pathFormat': pathFormat, 
+    if (supportsInvalidatedEvent != null) 'supportsInvalidatedEvent': supportsInvalidatedEvent, 
+    if (supportsMemoryReferences != null) 'supportsMemoryReferences': supportsMemoryReferences, 
+    if (supportsProgressReporting != null) 'supportsProgressReporting': supportsProgressReporting, 
+    if (supportsRunInTerminalRequest != null) 'supportsRunInTerminalRequest': supportsRunInTerminalRequest, 
+    if (supportsVariablePaging != null) 'supportsVariablePaging': supportsVariablePaging, 
+    if (supportsVariableType != null) 'supportsVariableType': supportsVariableType, 
   };
 }
 
@@ -2743,10 +2743,10 @@ class InstructionBreakpoint {
   }
 
   Map<String, Object?> toJson() => {
-    'condition': condition, 
-    'hitCondition': hitCondition, 
+    if (condition != null) 'condition': condition, 
+    if (hitCondition != null) 'hitCondition': hitCondition, 
     'instructionReference': instructionReference, 
-    'offset': offset, 
+    if (offset != null) 'offset': offset, 
   };
 }
 
@@ -2803,8 +2803,8 @@ class LaunchRequestArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    '__restart': restart, 
-    'noDebug': noDebug, 
+    if (restart != null) '__restart': restart, 
+    if (noDebug != null) 'noDebug': noDebug, 
   };
 }
 
@@ -2981,11 +2981,11 @@ class Message {
   Map<String, Object?> toJson() => {
     'format': format, 
     'id': id, 
-    'sendTelemetry': sendTelemetry, 
-    'showUser': showUser, 
-    'url': url, 
-    'urlLabel': urlLabel, 
-    'variables': variables, 
+    if (sendTelemetry != null) 'sendTelemetry': sendTelemetry, 
+    if (showUser != null) 'showUser': showUser, 
+    if (url != null) 'url': url, 
+    if (urlLabel != null) 'urlLabel': urlLabel, 
+    if (variables != null) 'variables': variables, 
   };
 }
 
@@ -3097,16 +3097,16 @@ class Module {
   }
 
   Map<String, Object?> toJson() => {
-    'addressRange': addressRange, 
-    'dateTimeStamp': dateTimeStamp, 
+    if (addressRange != null) 'addressRange': addressRange, 
+    if (dateTimeStamp != null) 'dateTimeStamp': dateTimeStamp, 
     'id': id, 
-    'isOptimized': isOptimized, 
-    'isUserCode': isUserCode, 
+    if (isOptimized != null) 'isOptimized': isOptimized, 
+    if (isUserCode != null) 'isUserCode': isUserCode, 
     'name': name, 
-    'path': path, 
-    'symbolFilePath': symbolFilePath, 
-    'symbolStatus': symbolStatus, 
-    'version': version, 
+    if (path != null) 'path': path, 
+    if (symbolFilePath != null) 'symbolFilePath': symbolFilePath, 
+    if (symbolStatus != null) 'symbolStatus': symbolStatus, 
+    if (version != null) 'version': version, 
   };
 }
 
@@ -3143,8 +3143,8 @@ class ModulesArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'moduleCount': moduleCount, 
-    'startModule': startModule, 
+    if (moduleCount != null) 'moduleCount': moduleCount, 
+    if (startModule != null) 'startModule': startModule, 
   };
 }
 
@@ -3251,7 +3251,7 @@ class NextArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'granularity': granularity, 
+    if (granularity != null) 'granularity': granularity, 
     'threadId': threadId, 
   };
 }
@@ -3441,7 +3441,7 @@ class ReadMemoryArguments extends RequestArguments {
   Map<String, Object?> toJson() => {
     'count': count, 
     'memoryReference': memoryReference, 
-    'offset': offset, 
+    if (offset != null) 'offset': offset, 
   };
 }
 
@@ -3524,7 +3524,7 @@ class Request extends ProtocolMessage {
   @override
   Map<String, Object?> toJson() => {
     ...super.toJson(),
-    'arguments': arguments, 
+    if (arguments != null) 'arguments': arguments, 
     'command': command, 
   };
 }
@@ -3598,9 +3598,9 @@ class Response extends ProtocolMessage {
   @override
   Map<String, Object?> toJson() => {
     ...super.toJson(),
-    'body': body, 
+    if (body != null) 'body': body, 
     'command': command, 
-    'message': message, 
+    if (message != null) 'message': message, 
     'request_seq': requestSeq, 
     'success': success, 
   };
@@ -3631,7 +3631,7 @@ class RestartArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'arguments': arguments, 
+    if (arguments != null) 'arguments': arguments, 
   };
 }
 
@@ -3864,9 +3864,9 @@ class RunInTerminalRequestArguments extends RequestArguments {
   Map<String, Object?> toJson() => {
     'args': args, 
     'cwd': cwd, 
-    'env': env, 
-    'kind': kind, 
-    'title': title, 
+    if (env != null) 'env': env, 
+    if (kind != null) 'kind': kind, 
+    if (title != null) 'title': title, 
   };
 }
 
@@ -4014,16 +4014,16 @@ class Scope {
   }
 
   Map<String, Object?> toJson() => {
-    'column': column, 
-    'endColumn': endColumn, 
-    'endLine': endLine, 
+    if (column != null) 'column': column, 
+    if (endColumn != null) 'endColumn': endColumn, 
+    if (endLine != null) 'endLine': endLine, 
     'expensive': expensive, 
-    'indexedVariables': indexedVariables, 
-    'line': line, 
+    if (indexedVariables != null) 'indexedVariables': indexedVariables, 
+    if (line != null) 'line': line, 
     'name': name, 
-    'namedVariables': namedVariables, 
-    'presentationHint': presentationHint, 
-    'source': source, 
+    if (namedVariables != null) 'namedVariables': namedVariables, 
+    if (presentationHint != null) 'presentationHint': presentationHint, 
+    if (source != null) 'source': source, 
     'variablesReference': variablesReference, 
   };
 }
@@ -4145,10 +4145,10 @@ class SetBreakpointsArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'breakpoints': breakpoints, 
-    'lines': lines, 
+    if (breakpoints != null) 'breakpoints': breakpoints, 
+    if (lines != null) 'lines': lines, 
     'source': source, 
-    'sourceModified': sourceModified, 
+    if (sourceModified != null) 'sourceModified': sourceModified, 
   };
 }
 
@@ -4316,8 +4316,8 @@ class SetExceptionBreakpointsArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'exceptionOptions': exceptionOptions, 
-    'filterOptions': filterOptions, 
+    if (exceptionOptions != null) 'exceptionOptions': exceptionOptions, 
+    if (filterOptions != null) 'filterOptions': filterOptions, 
     'filters': filters, 
   };
 }
@@ -4425,8 +4425,8 @@ class SetExpressionArguments extends RequestArguments {
 
   Map<String, Object?> toJson() => {
     'expression': expression, 
-    'format': format, 
-    'frameId': frameId, 
+    if (format != null) 'format': format, 
+    if (frameId != null) 'frameId': frameId, 
     'value': value, 
   };
 }
@@ -4656,7 +4656,7 @@ class SetVariableArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'format': format, 
+    if (format != null) 'format': format, 
     'name': name, 
     'value': value, 
     'variablesReference': variablesReference, 
@@ -4790,14 +4790,14 @@ class Source {
   }
 
   Map<String, Object?> toJson() => {
-    'adapterData': adapterData, 
-    'checksums': checksums, 
-    'name': name, 
-    'origin': origin, 
-    'path': path, 
-    'presentationHint': presentationHint, 
-    'sourceReference': sourceReference, 
-    'sources': sources, 
+    if (adapterData != null) 'adapterData': adapterData, 
+    if (checksums != null) 'checksums': checksums, 
+    if (name != null) 'name': name, 
+    if (origin != null) 'origin': origin, 
+    if (path != null) 'path': path, 
+    if (presentationHint != null) 'presentationHint': presentationHint, 
+    if (sourceReference != null) 'sourceReference': sourceReference, 
+    if (sources != null) 'sources': sources, 
   };
 }
 
@@ -4836,7 +4836,7 @@ class SourceArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'source': source, 
+    if (source != null) 'source': source, 
     'sourceReference': sourceReference, 
   };
 }
@@ -4904,11 +4904,11 @@ class SourceBreakpoint {
   }
 
   Map<String, Object?> toJson() => {
-    'column': column, 
-    'condition': condition, 
-    'hitCondition': hitCondition, 
+    if (column != null) 'column': column, 
+    if (condition != null) 'condition': condition, 
+    if (hitCondition != null) 'hitCondition': hitCondition, 
     'line': line, 
-    'logMessage': logMessage, 
+    if (logMessage != null) 'logMessage': logMessage, 
   };
 }
 
@@ -5057,17 +5057,17 @@ class StackFrame {
   }
 
   Map<String, Object?> toJson() => {
-    'canRestart': canRestart, 
+    if (canRestart != null) 'canRestart': canRestart, 
     'column': column, 
-    'endColumn': endColumn, 
-    'endLine': endLine, 
+    if (endColumn != null) 'endColumn': endColumn, 
+    if (endLine != null) 'endLine': endLine, 
     'id': id, 
-    'instructionPointerReference': instructionPointerReference, 
+    if (instructionPointerReference != null) 'instructionPointerReference': instructionPointerReference, 
     'line': line, 
-    'moduleId': moduleId, 
+    if (moduleId != null) 'moduleId': moduleId, 
     'name': name, 
-    'presentationHint': presentationHint, 
-    'source': source, 
+    if (presentationHint != null) 'presentationHint': presentationHint, 
+    if (source != null) 'source': source, 
   };
 }
 
@@ -5145,13 +5145,13 @@ class StackFrameFormat extends ValueFormat {
   @override
   Map<String, Object?> toJson() => {
     ...super.toJson(),
-    'includeAll': includeAll, 
-    'line': line, 
-    'module': module, 
-    'parameterNames': parameterNames, 
-    'parameterTypes': parameterTypes, 
-    'parameterValues': parameterValues, 
-    'parameters': parameters, 
+    if (includeAll != null) 'includeAll': includeAll, 
+    if (line != null) 'line': line, 
+    if (module != null) 'module': module, 
+    if (parameterNames != null) 'parameterNames': parameterNames, 
+    if (parameterTypes != null) 'parameterTypes': parameterTypes, 
+    if (parameterValues != null) 'parameterValues': parameterValues, 
+    if (parameters != null) 'parameters': parameters, 
   };
 }
 
@@ -5204,9 +5204,9 @@ class StackTraceArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'format': format, 
-    'levels': levels, 
-    'startFrame': startFrame, 
+    if (format != null) 'format': format, 
+    if (levels != null) 'levels': levels, 
+    if (startFrame != null) 'startFrame': startFrame, 
     'threadId': threadId, 
   };
 }
@@ -5284,7 +5284,7 @@ class StepBackArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'granularity': granularity, 
+    if (granularity != null) 'granularity': granularity, 
     'threadId': threadId, 
   };
 }
@@ -5367,8 +5367,8 @@ class StepInArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'granularity': granularity, 
-    'targetId': targetId, 
+    if (granularity != null) 'granularity': granularity, 
+    if (targetId != null) 'targetId': targetId, 
     'threadId': threadId, 
   };
 }
@@ -5551,7 +5551,7 @@ class StepOutArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'granularity': granularity, 
+    if (granularity != null) 'granularity': granularity, 
     'threadId': threadId, 
   };
 }
@@ -5641,7 +5641,7 @@ class TerminateArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'restart': restart, 
+    if (restart != null) 'restart': restart, 
   };
 }
 
@@ -5708,7 +5708,7 @@ class TerminateThreadsArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'threadIds': threadIds, 
+    if (threadIds != null) 'threadIds': threadIds, 
   };
 }
 
@@ -5852,7 +5852,7 @@ class ValueFormat {
   }
 
   Map<String, Object?> toJson() => {
-    'hex': hex, 
+    if (hex != null) 'hex': hex, 
   };
 }
 
@@ -5964,13 +5964,13 @@ class Variable {
   }
 
   Map<String, Object?> toJson() => {
-    'evaluateName': evaluateName, 
-    'indexedVariables': indexedVariables, 
-    'memoryReference': memoryReference, 
+    if (evaluateName != null) 'evaluateName': evaluateName, 
+    if (indexedVariables != null) 'indexedVariables': indexedVariables, 
+    if (memoryReference != null) 'memoryReference': memoryReference, 
     'name': name, 
-    'namedVariables': namedVariables, 
-    'presentationHint': presentationHint, 
-    'type': type, 
+    if (namedVariables != null) 'namedVariables': namedVariables, 
+    if (presentationHint != null) 'presentationHint': presentationHint, 
+    if (type != null) 'type': type, 
     'value': value, 
     'variablesReference': variablesReference, 
   };
@@ -6019,9 +6019,9 @@ class VariablePresentationHint {
   }
 
   Map<String, Object?> toJson() => {
-    'attributes': attributes, 
-    'kind': kind, 
-    'visibility': visibility, 
+    if (attributes != null) 'attributes': attributes, 
+    if (kind != null) 'kind': kind, 
+    if (visibility != null) 'visibility': visibility, 
   };
 }
 
@@ -6082,10 +6082,10 @@ class VariablesArguments extends RequestArguments {
   }
 
   Map<String, Object?> toJson() => {
-    'count': count, 
-    'filter': filter, 
-    'format': format, 
-    'start': start, 
+    if (count != null) 'count': count, 
+    if (filter != null) 'filter': filter, 
+    if (format != null) 'format': format, 
+    if (start != null) 'start': start, 
     'variablesReference': variablesReference, 
   };
 }
@@ -6342,7 +6342,7 @@ class ContinueResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'allThreadsContinued': allThreadsContinued, 
+    if (allThreadsContinued != null) 'allThreadsContinued': allThreadsContinued, 
   };
 }
 
@@ -6378,7 +6378,7 @@ class ContinuedEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'allThreadsContinued': allThreadsContinued, 
+    if (allThreadsContinued != null) 'allThreadsContinued': allThreadsContinued, 
     'threadId': threadId, 
   };
 }
@@ -6433,8 +6433,8 @@ class DataBreakpointInfoResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'accessTypes': accessTypes, 
-    'canPersist': canPersist, 
+    if (accessTypes != null) 'accessTypes': accessTypes, 
+    if (canPersist != null) 'canPersist': canPersist, 
     'dataId': dataId, 
     'description': description, 
   };
@@ -6513,7 +6513,7 @@ class ErrorResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'error': error, 
+    if (error != null) 'error': error, 
   };
 }
 
@@ -6601,12 +6601,12 @@ class EvaluateResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'indexedVariables': indexedVariables, 
-    'memoryReference': memoryReference, 
-    'namedVariables': namedVariables, 
-    'presentationHint': presentationHint, 
+    if (indexedVariables != null) 'indexedVariables': indexedVariables, 
+    if (memoryReference != null) 'memoryReference': memoryReference, 
+    if (namedVariables != null) 'namedVariables': namedVariables, 
+    if (presentationHint != null) 'presentationHint': presentationHint, 
     'result': result, 
-    'type': type, 
+    if (type != null) 'type': type, 
     'variablesReference': variablesReference, 
   };
 }
@@ -6657,8 +6657,8 @@ class ExceptionInfoResponseBody {
 
   Map<String, Object?> toJson() => {
     'breakMode': breakMode, 
-    'description': description, 
-    'details': details, 
+    if (description != null) 'description': description, 
+    if (details != null) 'details': details, 
     'exceptionId': exceptionId, 
   };
 }
@@ -6824,9 +6824,9 @@ class InvalidatedEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'areas': areas, 
-    'stackFrameId': stackFrameId, 
-    'threadId': threadId, 
+    if (areas != null) 'areas': areas, 
+    if (stackFrameId != null) 'stackFrameId': stackFrameId, 
+    if (threadId != null) 'threadId': threadId, 
   };
 }
 
@@ -6984,7 +6984,7 @@ class ModulesResponseBody {
 
   Map<String, Object?> toJson() => {
     'modules': modules, 
-    'totalModules': totalModules, 
+    if (totalModules != null) 'totalModules': totalModules, 
   };
 }
 
@@ -7084,14 +7084,14 @@ class OutputEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'category': category, 
-    'column': column, 
-    'data': data, 
-    'group': group, 
-    'line': line, 
+    if (category != null) 'category': category, 
+    if (column != null) 'column': column, 
+    if (data != null) 'data': data, 
+    if (group != null) 'group': group, 
+    if (line != null) 'line': line, 
     'output': output, 
-    'source': source, 
-    'variablesReference': variablesReference, 
+    if (source != null) 'source': source, 
+    if (variablesReference != null) 'variablesReference': variablesReference, 
   };
 }
 
@@ -7171,11 +7171,11 @@ class ProcessEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'isLocalProcess': isLocalProcess, 
+    if (isLocalProcess != null) 'isLocalProcess': isLocalProcess, 
     'name': name, 
-    'pointerSize': pointerSize, 
-    'startMethod': startMethod, 
-    'systemProcessId': systemProcessId, 
+    if (pointerSize != null) 'pointerSize': pointerSize, 
+    if (startMethod != null) 'startMethod': startMethod, 
+    if (systemProcessId != null) 'systemProcessId': systemProcessId, 
   };
 }
 
@@ -7211,7 +7211,7 @@ class ProgressEndEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'message': message, 
+    if (message != null) 'message': message, 
     'progressId': progressId, 
   };
 }
@@ -7288,11 +7288,11 @@ class ProgressStartEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'cancellable': cancellable, 
-    'message': message, 
-    'percentage': percentage, 
+    if (cancellable != null) 'cancellable': cancellable, 
+    if (message != null) 'message': message, 
+    if (percentage != null) 'percentage': percentage, 
     'progressId': progressId, 
-    'requestId': requestId, 
+    if (requestId != null) 'requestId': requestId, 
     'title': title, 
   };
 }
@@ -7337,8 +7337,8 @@ class ProgressUpdateEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'message': message, 
-    'percentage': percentage, 
+    if (message != null) 'message': message, 
+    if (percentage != null) 'percentage': percentage, 
     'progressId': progressId, 
   };
 }
@@ -7387,8 +7387,8 @@ class ReadMemoryResponseBody {
 
   Map<String, Object?> toJson() => {
     'address': address, 
-    'data': data, 
-    'unreadableBytes': unreadableBytes, 
+    if (data != null) 'data': data, 
+    if (unreadableBytes != null) 'unreadableBytes': unreadableBytes, 
   };
 }
 
@@ -7488,8 +7488,8 @@ class RunInTerminalResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'processId': processId, 
-    'shellProcessId': shellProcessId, 
+    if (processId != null) 'processId': processId, 
+    if (shellProcessId != null) 'shellProcessId': shellProcessId, 
   };
 }
 
@@ -7610,7 +7610,7 @@ class SetExceptionBreakpointsResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'breakpoints': breakpoints, 
+    if (breakpoints != null) 'breakpoints': breakpoints, 
   };
 }
 
@@ -7685,12 +7685,12 @@ class SetExpressionResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'indexedVariables': indexedVariables, 
-    'namedVariables': namedVariables, 
-    'presentationHint': presentationHint, 
-    'type': type, 
+    if (indexedVariables != null) 'indexedVariables': indexedVariables, 
+    if (namedVariables != null) 'namedVariables': namedVariables, 
+    if (presentationHint != null) 'presentationHint': presentationHint, 
+    if (type != null) 'type': type, 
     'value': value, 
-    'variablesReference': variablesReference, 
+    if (variablesReference != null) 'variablesReference': variablesReference, 
   };
 }
 
@@ -7813,11 +7813,11 @@ class SetVariableResponseBody {
   }
 
   Map<String, Object?> toJson() => {
-    'indexedVariables': indexedVariables, 
-    'namedVariables': namedVariables, 
-    'type': type, 
+    if (indexedVariables != null) 'indexedVariables': indexedVariables, 
+    if (namedVariables != null) 'namedVariables': namedVariables, 
+    if (type != null) 'type': type, 
     'value': value, 
-    'variablesReference': variablesReference, 
+    if (variablesReference != null) 'variablesReference': variablesReference, 
   };
 }
 
@@ -7853,7 +7853,7 @@ class SourceResponseBody {
 
   Map<String, Object?> toJson() => {
     'content': content, 
-    'mimeType': mimeType, 
+    if (mimeType != null) 'mimeType': mimeType, 
   };
 }
 
@@ -7896,7 +7896,7 @@ class StackTraceResponseBody {
 
   Map<String, Object?> toJson() => {
     'stackFrames': stackFrames, 
-    'totalFrames': totalFrames, 
+    if (totalFrames != null) 'totalFrames': totalFrames, 
   };
 }
 
@@ -8070,13 +8070,13 @@ class StoppedEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'allThreadsStopped': allThreadsStopped, 
-    'description': description, 
-    'hitBreakpointIds': hitBreakpointIds, 
-    'preserveFocusHint': preserveFocusHint, 
+    if (allThreadsStopped != null) 'allThreadsStopped': allThreadsStopped, 
+    if (description != null) 'description': description, 
+    if (hitBreakpointIds != null) 'hitBreakpointIds': hitBreakpointIds, 
+    if (preserveFocusHint != null) 'preserveFocusHint': preserveFocusHint, 
     'reason': reason, 
-    'text': text, 
-    'threadId': threadId, 
+    if (text != null) 'text': text, 
+    if (threadId != null) 'threadId': threadId, 
   };
 }
 
@@ -8146,7 +8146,7 @@ class TerminatedEventBody extends EventBody {
   }
 
   Map<String, Object?> toJson() => {
-    'restart': restart, 
+    if (restart != null) 'restart': restart, 
   };
 }
 
