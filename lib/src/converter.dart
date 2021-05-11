@@ -8,6 +8,11 @@ import 'package:vm_service/vm_service.dart' as vm;
 
 import 'adapters/dart.dart';
 
+/// When evaluateToStringInDebugViews is enabled, how many toString() calls may
+/// be made within a single evaluation (eg. to avoid calling toString() for a
+/// large List of items or a large number of fields on an object).
+const maxToStringsPerEvaluation = 10;
+
 /// Whether [kind] is a simple kind, and does not need to be mapped to a variable.
 bool isSimpleKind(String? kind) {
   return kind == 'String' ||
@@ -33,18 +38,29 @@ class ProtocolConverter {
     return !rel.startsWith('..') ? rel : sourcePath;
   }
 
-  String convertVmInstanceRefToDisplayString(vm.InstanceRef ref) {
+  FutureOr<String> convertVmInstanceRefToDisplayString(
+      ThreadInfo thread, vm.InstanceRef ref,
+      {required allowCallingToString,
+      suppressQuotesAroundString = false}) async {
+    final canCallToString = allowCallingToString &&
+        (_adapter.args?.evaluateToStringInDebugViews ?? false);
     if (ref.kind == 'String' || ref.valueAsString != null) {
       var stringValue = ref.valueAsString.toString();
       if (ref.valueAsStringIsTruncated ?? false) {
         stringValue = '$stringValue…';
       }
-      if (ref.kind == 'String') {
+      if (ref.kind == 'String' && !suppressQuotesAroundString) {
         stringValue = '"$stringValue"';
       }
       return stringValue;
     } else if (ref.kind == 'PlainInstance') {
-      return ref.classRef?.name ?? '<unknown instance>';
+      var stringValue = ref.classRef?.name ?? '<unknown instance>';
+      if (canCallToString) {
+        final toStringValue =
+            await _callToString(thread, ref, suppressQuotesAroundString: true);
+        stringValue += ' ($toStringValue)';
+      }
+      return stringValue;
     } else if (ref.kind == 'List') {
       return 'List (${ref.length} ${ref.length == 1 ? "item" : "items"})';
     } else if (ref.kind == 'Map') {
@@ -53,19 +69,6 @@ class ProtocolConverter {
       return 'Type (${ref.name})';
     } else {
       return ref.kind ?? '<unknown result>';
-    }
-  }
-
-  /// Fetches a [vm.Instance] for a [vm.InstanceRef] and converts it to a
-  /// variables list.
-  Future<List<dap.Variable>> convertVmInstanceRefToVariablesList(
-      ThreadInfo thread, vm.InstanceRef instance,
-      {int startItem = 0, int? numItems}) async {
-    final response = await thread.getObject(instance);
-    if (response is vm.Instance) {
-      return convertVmInstanceToVariablesList(thread, response);
-    } else {
-      return [convertVmResponseToVariable(response)];
     }
   }
 
@@ -79,33 +82,43 @@ class ProtocolConverter {
     final fields = instance.fields;
 
     if (isSimpleKind(instance.kind)) {
-      return [convertVmResponseToVariable(instance)];
+      return [
+        await convertVmResponseToVariable(thread, instance,
+            allowCallingToString: true)
+      ];
     } else if (elements != null) {
       final start = startItem ?? 0;
-      return elements
+      return Future.wait(elements
           .cast<vm.Response>()
           .sublist(start, numItems != null ? start + numItems : null)
-          .mapIndexed((index, response) =>
-              convertVmResponseToVariable(response, name: '${start + index}'))
-          .toList();
+          .mapIndexed((index, response) async => convertVmResponseToVariable(
+              thread, response,
+              name: '${start + index}',
+              allowCallingToString: index <= maxToStringsPerEvaluation)));
     } else if (associations != null) {
       final start = startItem ?? 0;
-      return associations
+      return Future.wait(associations
           .sublist(start, numItems != null ? start + numItems : null)
-          .mapIndexed((index, mapEntry) {
-        final keyDisplay = convertVmResponseToDisplayString(mapEntry.key);
-        final valueDisplay = convertVmResponseToDisplayString(mapEntry.value);
+          .mapIndexed((index, mapEntry) async {
+        final allowCallingToString = index <= maxToStringsPerEvaluation;
+        final keyDisplay = await convertVmResponseToDisplayString(
+            thread, mapEntry.key,
+            allowCallingToString: allowCallingToString);
+        final valueDisplay = await convertVmResponseToDisplayString(
+            thread, mapEntry.value,
+            allowCallingToString: allowCallingToString);
         return dap.Variable(
           name: '${start + index}',
           value: '$keyDisplay -> $valueDisplay',
           variablesReference: thread.storeData(mapEntry),
         );
-      }).toList();
+      }));
     } else if (fields != null) {
-      final variables = fields
-          .map((field) => convertVmResponseToVariable(field.value,
-              name: field.decl?.name ?? '<unnamed field>'))
-          .toList();
+      final variables = await Future.wait(fields.mapIndexed(
+          (index, field) async => convertVmResponseToVariable(
+              thread, field.value,
+              name: field.decl?.name ?? '<unnamed field>',
+              allowCallingToString: index <= maxToStringsPerEvaluation)));
 
       // Stitch in getters if enabled.
       final service = _adapter.vmService;
@@ -116,17 +129,19 @@ class ProtocolConverter {
             await _getterNamesForHierarchy(thread, instance.classRef);
 
         // Evaluate each getter.
-        final getterResults = await Future.wait(getterNames.map((name) async {
+        final getterResults =
+            await Future.wait(getterNames.mapIndexed((index, name) async {
           final response =
               await service.evaluate(thread.isolate.id!, instance.id!, name);
           // Convert results to variables.
-          return convertVmResponseToVariable(response, name: name);
+          return convertVmResponseToVariable(thread, response,
+              name: name,
+              allowCallingToString: index <= maxToStringsPerEvaluation);
         }));
 
         variables.addAll(getterResults);
       }
 
-      variables.sortBy((v) => v.name);
       return variables;
     } else {
       // TODO(dantup): !
@@ -134,9 +149,14 @@ class ProtocolConverter {
     }
   }
 
-  String convertVmResponseToDisplayString(vm.Response response) {
+  FutureOr<String> convertVmResponseToDisplayString(
+      ThreadInfo thread, vm.Response response,
+      {required bool allowCallingToString,
+      suppressQuotesAroundString = false}) {
     if (response is vm.InstanceRef) {
-      return convertVmInstanceRefToDisplayString(response);
+      return convertVmInstanceRefToDisplayString(thread, response,
+          allowCallingToString: allowCallingToString,
+          suppressQuotesAroundString: suppressQuotesAroundString);
     } else if (response is vm.Sentinel) {
       return '<sentinel>';
     } else {
@@ -145,12 +165,14 @@ class ProtocolConverter {
   }
 
   /// Converts a [vm.Response] directly to a [dap.Variable].
-  dap.Variable convertVmResponseToVariable(vm.Response response,
-      {String? name}) {
+  FutureOr<dap.Variable> convertVmResponseToVariable(
+      ThreadInfo thread, vm.Response response,
+      {String? name, required bool allowCallingToString}) async {
     if (response is vm.InstanceRef) {
       return dap.Variable(
         name: name ?? response.kind.toString(),
-        value: convertVmResponseToDisplayString(response),
+        value: await convertVmResponseToDisplayString(thread, response,
+            allowCallingToString: allowCallingToString),
         variablesReference: 0,
       );
     } else if (response is vm.Sentinel) {
@@ -258,6 +280,21 @@ class ProtocolConverter {
     } else {
       return null;
     }
+  }
+
+  Future<String?> _callToString(ThreadInfo thread, vm.InstanceRef ref,
+      {suppressQuotesAroundString = false}) async {
+    final service = _adapter.vmService;
+    if (service == null) {
+      return null;
+    }
+    final result = await service.invoke(
+        thread.isolate.id!, ref.id!, 'toString', [],
+        disableBreakpoints: true);
+
+    return convertVmResponseToDisplayString(thread, result,
+        allowCallingToString: false,
+        suppressQuotesAroundString: suppressQuotesAroundString);
   }
 
   Future<Set<String>> _getterNamesForHierarchy(

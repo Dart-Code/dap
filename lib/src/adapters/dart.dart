@@ -149,10 +149,10 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     } else if (result is vm.Sentinel) {
       throw result.valueAsString ?? '<collected>';
     } else if (result is vm.InstanceRef) {
-      // TODO(dantup): Truncation etc.
       sendResponse(EvaluateResponseBody(
-        // TODO(dantup): Format (eg. quotes around strings).
-        result: _converter.convertVmInstanceRefToDisplayString(result),
+        result: await _converter.convertVmInstanceRefToDisplayString(
+            thread, result,
+            allowCallingToString: true),
         // TODO(dantup): May need to store `expression` (see Dart-Code DAP).
         variablesReference:
             isSimpleKind(result.kind) ? 0 : thread.storeData(result),
@@ -456,10 +456,11 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     if (vmData is vm.Frame) {
       final vars = vmData.vars;
       if (vars != null) {
-        for (final variable in vars.sortedBy((v) => v.name ?? '')) {
-          variables.add(_converter.convertVmResponseToVariable(variable.value,
-              name: variable.name));
-        }
+        variables.addAll(await Future.wait(vars.mapIndexed(
+            (index, variable) async => _converter.convertVmResponseToVariable(
+                thread, variable.value,
+                name: variable.name,
+                allowCallingToString: index <= maxToStringsPerEvaluation))));
       }
     } else if (vmData is vm.MapAssociation) {
       // TODO(dantup): Maps
@@ -488,6 +489,8 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
         ));
       }
     }
+
+    variables.sortBy((v) => v.name);
 
     sendResponse(VariablesResponseBody(variables: variables));
   }
@@ -673,6 +676,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
   final List<String>? vmAdditionalArgs;
   final bool? enableAsserts;
   final bool? evaluateGettersInDebugViews;
+  final bool? evaluateToStringInDebugViews;
 
   /// Whether to send debug logging to clients in a custom `dart.log` event. This
   /// is used both by the out-of-process tests to ensure the logs contain enough
@@ -692,6 +696,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
     this.vmAdditionalArgs,
     this.enableAsserts,
     this.evaluateGettersInDebugViews,
+    this.evaluateToStringInDebugViews,
     this.sendLogsToClient,
   }) : super(restart: restart, noDebug: noDebug);
 
@@ -706,6 +711,8 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         enableAsserts = obj['enableAsserts'] as bool?,
         evaluateGettersInDebugViews =
             obj['evaluateGettersInDebugViews'] as bool?,
+        evaluateToStringInDebugViews =
+            obj['evaluateToStringInDebugViews'] as bool?,
         sendLogsToClient = obj['sendLogsToClient'] as bool?,
         super.fromMap(obj);
 
@@ -722,6 +729,8 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         if (enableAsserts != null) 'enableAsserts': enableAsserts,
         if (evaluateGettersInDebugViews != null)
           'evaluateGettersInDebugViews': evaluateGettersInDebugViews,
+        if (evaluateToStringInDebugViews != null)
+          'evaluateToStringInDebugViews': evaluateToStringInDebugViews,
         if (sendLogsToClient != null) 'sendLogsToClient': sendLogsToClient,
       };
 

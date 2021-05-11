@@ -62,9 +62,31 @@ void main(List<String> args) {
 
   test(
       'evaluates complex expressions expressions with evaluateToStringInDebugViews=true',
-      () {
-    // TODO(dantup): !
-  }, skip: true);
+      () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  print('Hello!'); // BREAKPOINT
+}
+    ''');
+    final breakpointLine = lineWith(testFile, '// BREAKPOINT');
+
+    final stop = await client.hitBreakpoint(testFile, breakpointLine,
+        launch: () =>
+            client.launch(testFile.path, evaluateToStringInDebugViews: true));
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
+    final topFrameId = stack.stackFrames.first.id;
+
+    final result = await client.expectEvalResult(topFrameId,
+        'DateTime(2000, 1, 1)', 'DateTime (2000-01-01 00:00:00.000)');
+    expect(result.variablesReference, greaterThan(0));
+
+    // Ensure the variablesReference is valid.
+    final variable = await client.variables(result.variablesReference);
+    expect(variable.success, true);
+  });
 
   test(r'evaluates $e to the threads exception (simple type)', () async {
     da = await DapTestServer.forEnvironment();

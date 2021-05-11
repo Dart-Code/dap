@@ -87,11 +87,14 @@ class DapTestClient {
     return responses[1] as Response; // Return the initialize response.
   }
 
-  Future<Response> launch(String program,
-      {List<String>? args,
-      FutureOr<String>? cwd,
-      bool? noDebug,
-      bool? evaluateGettersInDebugViews}) async {
+  Future<Response> launch(
+    String program, {
+    List<String>? args,
+    FutureOr<String>? cwd,
+    bool? noDebug,
+    bool? evaluateGettersInDebugViews,
+    bool? evaluateToStringInDebugViews,
+  }) async {
     return sendRequest(
       DartLaunchRequestArguments(
         noDebug: noDebug,
@@ -100,6 +103,7 @@ class DapTestClient {
         args: args,
         dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
         evaluateGettersInDebugViews: evaluateGettersInDebugViews,
+        evaluateToStringInDebugViews: evaluateToStringInDebugViews,
         // When running out of process, VM Service traffic won't be available
         // to the client-side logger, so force logging on which sends VM Service
         // traffic in a custom event.
