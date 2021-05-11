@@ -159,6 +159,11 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   FutureOr<void> variablesRequest(Request request, VariablesArguments args,
       void Function(VariablesResponseBody) sendResponse);
 
+  /// Wraps a fromJson handler for requests that allow null arguments.
+  T? Function(Map<String, Object?>?) _allowNullArg<T extends RequestArguments>(
+          T Function(Map<String, Object?>) fromJson) =>
+      (data) => data == null ? null : fromJson(data);
+
   /// Handles incoming messages from the client editor.
   void _handleIncomingMessage(ProtocolMessage message) {
     if (message is Request) {
@@ -179,12 +184,14 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
     } else if (request.command == 'launch') {
       handle(request, launchRequest, parseLaunchArgs);
     } else if (request.command == 'terminate') {
-      handle(request, terminateRequest, TerminateArguments.fromJson);
+      handle(request, terminateRequest,
+          _allowNullArg(TerminateArguments.fromJson));
     } else if (request.command == 'disconnect') {
-      handle(request, disconnectRequest, DisconnectArguments.fromJson);
+      handle(request, disconnectRequest,
+          _allowNullArg(DisconnectArguments.fromJson));
     } else if (request.command == 'configurationDone') {
       handle(request, configurationDoneRequest,
-          ConfigurationDoneArguments.fromJson);
+          _allowNullArg(ConfigurationDoneArguments.fromJson));
     } else if (request.command == 'setExceptionBreakpoints') {
       handle(request, setExceptionBreakpointsRequest,
           SetExceptionBreakpointsArguments.fromJson);
