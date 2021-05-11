@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:vm_service/vm_service.dart' as vm;
 
+// TODO(dantup): See if there's a standard logger package or something we can use.
+
 final nullLogger = _NullLogger();
 
 class FileLogger extends Logger {

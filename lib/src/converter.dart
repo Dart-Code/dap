@@ -217,7 +217,6 @@ class ProtocolConverter {
       canShowSource = true;
     }
 
-    // TODO(dantup): Try to resolve line and column information from the tokenPos.
     var line = 0, col = 0;
     if (scriptRef != null && tokenPos != null) {
       try {

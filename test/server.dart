@@ -51,7 +51,6 @@ abstract class DapTestServer {
 }
 
 class _InProcess extends DapTestServer {
-  // TODO(dantup): Use this to shut down.
   // ignore: unused_field
   final DebugAdapter _adapter;
   _InProcess._(

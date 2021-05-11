@@ -179,10 +179,8 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
     if (message is Request) {
       _handleIncomingRequest(message);
     } else if (message is Response) {
-      // TODO(dantup): Determine how to handle errors in responses from clients.
       _handleIncomingResponse(message);
     } else {
-      // TODO(dantup): Determine how to handle this.
       throw Exception('Unknown Protocol message ${message.type}');
     }
   }

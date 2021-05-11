@@ -44,7 +44,6 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   @override
   final parseLaunchArgs = DartLaunchRequestArguments.fromJson;
 
-  /// TODO(dantup): Ensure these are cleaned up!
   final _subscriptions = <StreamSubscription<vm.Event>>[];
 
   DartDebugAdapter(LspByteStreamServerChannel channel, Logger logger)
@@ -125,9 +124,8 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
 
     if (result is vm.ErrorRef) {
       // TODO(dantup): sendError(result.message);
-      throw result.message ?? '<error>';
+      throw result.message ?? '<error ref>';
     } else if (result is vm.Sentinel) {
-      // TODO(dantup): sendError(result.valueAsString ?? '<collected>');
       throw result.valueAsString ?? '<collected>';
     } else if (result is vm.InstanceRef) {
       // TODO(dantup): Truncation etc.
@@ -162,12 +160,12 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
           defaultValue: true,
         ),
       ],
+      supportsClipboardContext: true,
       // TODO(dantup): All of these...
-      // supportsClipboardContext: true,
       // supportsConditionalBreakpoints: true,
       supportsConfigurationDoneRequest: true,
       supportsDelayedStackTraceLoading: true,
-      // supportsEvaluateForHovers: true,
+      supportsEvaluateForHovers: true,
       // supportsLogPoints: true,
       // supportsRestartFrame: true,
       supportsTerminateRequest: true,
@@ -401,6 +399,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   @override
   FutureOr<void> terminateRequest(Request request, TerminateArguments? args,
       void Function(void) sendResponse) async {
+    _subscriptions.forEach((sub) => sub.cancel());
     // Terminate is a graceful request to terminate.
     // TODO(dantup): Process additionalPidsToTerminate.
     // TODO(dantup): Remove pause-on-exceptions, breakpoints and resume all threads?
@@ -575,14 +574,12 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   void _handleServiceEvent(vm.Event event) {}
 
   void _handleStderr(List<int> data) {
-    // TODO(dantup): Is it safe to assume UTF8?
     sendEvent(OutputEventBody(category: 'stderr', output: utf8.decode(data)));
   }
 
   void _handleStderrEvent(vm.Event event) {}
 
   void _handleStdout(List<int> data) {
-    // TODO(dantup): Is it safe to assume UTF8?
     sendEvent(OutputEventBody(category: 'stdout', output: utf8.decode(data)));
   }
 

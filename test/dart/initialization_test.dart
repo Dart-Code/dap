@@ -14,8 +14,11 @@ void main() {
     expect(response.command, equals('initialize'));
     final result = Capabilities.fromJson(response.body as Map<String, Object?>);
 
-    // TODO(dantup): Test for actual desired value
+    // Check some of the important capabilities to ensure the request returned
+    // its response correctly.
     expect(result.supportsConfigurationDoneRequest, isTrue);
+    expect(result.supportsTerminateRequest, isTrue);
+    expect(result.supportsEvaluateForHovers, isTrue);
   });
 
   test('Server rejects unknown requests', () async {
