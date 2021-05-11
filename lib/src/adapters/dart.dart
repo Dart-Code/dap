@@ -950,7 +950,7 @@ class IsolateManager {
     if (thread != null) {
       thread.paused = false;
       thread.pauseEvent = null;
-      thread.exceptionReference = 0;
+      thread.exceptionReference = null;
     }
   }
 
