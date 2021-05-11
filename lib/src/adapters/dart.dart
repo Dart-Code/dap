@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:collection/collection.dart';
 import 'package:dap/src/converter.dart';
 import 'package:dap/src/debug_adapter.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart' hide Event;
@@ -17,7 +16,6 @@ import 'package:vm_service/vm_service.dart' as vm;
 class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   late IsolateManager _isolateManager;
   late ProtocolConverter _converter;
-  var _debug = false;
   Process? _process;
   String? cwd;
   File? _vmServiceInfoFile;
@@ -136,15 +134,19 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       void Function(Capabilities) sendResponse) async {
     // TODO(dantup): Honor things like args.linesStartAt1!
     sendResponse(Capabilities(
+      exceptionBreakpointFilters: [
+        ExceptionBreakpointsFilter(
+          filter: 'All',
+          label: 'All Exceptions',
+          defaultValue: false,
+        ),
+        ExceptionBreakpointsFilter(
+          filter: 'Unhandled',
+          label: 'Uncaught Exceptions',
+          defaultValue: true,
+        ),
+      ],
       // TODO(dantup): All of these...
-      // exceptionBreakpointFilters: [
-      //   ExceptionBreakpointsFilter(
-      //       filter: 'All', label: 'All Exceptions', defaultValue: false),
-      //   ExceptionBreakpointsFilter(
-      //       filter: 'Unhandled',
-      //       label: 'Uncaught Exceptions',
-      //       defaultValue: true),
-      // ],
       // supportsClipboardContext: true,
       // supportsConditionalBreakpoints: true,
       supportsConfigurationDoneRequest: true,
@@ -168,10 +170,19 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     if (args == null) {
       throw Exception('launchRequest requires non-null arguments');
     }
-    _debug = args.noDebug != true;
+
+    // Don't start launching until configurationDone.
+    if (!_configurationDoneCompleter.isCompleted) {
+      logger.log('Waiting for configurationDone request...');
+      await _configurationDoneCompleter.future;
+    }
+
+    final debug = args.noDebug != true;
     cwd = args.cwd;
 
-    if (_debug) {
+    _isolateManager.setDebugEnabled(debug);
+
+    if (debug) {
       // TODO(dantup): For some DAs (test, Flutter) we can't use
       // write-service-info so this class will likely need splitting into two
       // (a base DA and a Dart DA).
@@ -189,11 +200,11 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
 
     final vmPath = path.join(args.dartSdkPath, 'bin/dart');
     final vmArgs = [
-      if (_debug) ...[
+      if (debug) ...[
         '--enable-vm-service=${args.vmServicePort ?? 0}',
         '--pause_isolates_on_start=true',
       ],
-      if (_debug && vmServiceInfoFile != null) ...[
+      if (debug && vmServiceInfoFile != null) ...[
         '-DSILENT_OBSERVATORY=true',
         '--write-service-info=${Uri.file(vmServiceInfoFile.path)}'
       ],
@@ -207,12 +218,6 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
         .listen(_handleVmServiceInfoEvent, onError: (e) {
       logger.log('Ignoring exception from watcher: $e');
     });
-
-    // Don't start launching until configurationDone.
-    if (!_configurationDoneCompleter.isCompleted) {
-      logger.log('Waiting for configurationDone request...');
-      await _configurationDoneCompleter.future;
-    }
 
     final processArgs = [
       ...vmArgs,
@@ -263,10 +268,11 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       Request request,
       SetBreakpointsArguments args,
       void Function(SetBreakpointsResponseBody) sendResponse) async {
+    final breakpoints = args.breakpoints ?? [];
+
     final path = args.source.path;
     final name = args.source.name;
     final uri = path != null ? Uri.file(path).toString() : name!;
-    final breakpoints = args.breakpoints ?? [];
 
     await _isolateManager.setBreakpoints(uri, breakpoints);
 
@@ -275,6 +281,22 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     sendResponse(SetBreakpointsResponseBody(
       breakpoints: breakpoints.map((e) => Breakpoint(verified: true)).toList(),
     ));
+  }
+
+  @override
+  FutureOr<void> setExceptionBreakpointsRequest(
+      Request request,
+      SetExceptionBreakpointsArguments args,
+      void Function(SetExceptionBreakpointsResponseBody) sendResponse) async {
+    final mode = args.filters.contains('All')
+        ? 'All'
+        : args.filters.contains('Unhandled')
+            ? 'Unhandled'
+            : 'None';
+
+    await _isolateManager.setExceptionPauseMode(mode);
+
+    sendResponse(SetExceptionBreakpointsResponseBody());
   }
 
   @override
@@ -650,6 +672,11 @@ class IsolateManager {
   final Map<int, ThreadInfo> _threadsByThreadId = {};
   int _nextThreadNumber = 1;
 
+  /// Whether debugging is enabled. This must be set before any isolates are
+  /// spawned and controls whether breakpoints or exception pause modes are sent
+  /// to the VM.
+  var _debug = false;
+
   /// Tracks breakpoints last provided by the client so they can be sent to new
   /// isolates that appear after initial breakpoints are set.
   final Map<String, List<SourceBreakpoint>> _clientBreakpointsByUri = {};
@@ -659,6 +686,8 @@ class IsolateManager {
   /// and not requests to add/remove).
   final Map<String, Map<String, List<vm.Breakpoint>>>
       _vmBreakpointsByIsolateIdAndUri = {};
+
+  var _exceptionPauseMode = 'None';
 
   var _nextStoredDataId = 1;
 
@@ -791,6 +820,27 @@ class IsolateManager {
         .map((isolate) => _sendBreakpoints(isolate.isolate, uri: uri)));
   }
 
+  /// Sets whether debugging is enabled. If not, request to send breakpoints or
+  /// exception pause mode will be dropped. Other functionality (handling pause
+  /// events, resuming, etc.) will all still function.
+  ///
+  /// This is used in Flutter where a VM connection is available even if the
+  /// user is "running without debugging" to allow functionality that depends on
+  /// VM Services.
+  void setDebugEnabled(bool debug) {
+    _debug = debug;
+  }
+
+  /// Records exception pause mode as one of 'None', 'Unhandled' or 'All'. All
+  /// existing isolates will be updated to reflect the new setting.
+  FutureOr<void> setExceptionPauseMode(String mode) async {
+    _exceptionPauseMode = mode;
+
+    // Send to all existing threads.
+    await Future.wait(_threadsByThreadId.values
+        .map((isolate) => _sendExceptionPauseMode(isolate.isolate)));
+  }
+
   /// Stores some basic data indexed by an integer for use in "reference" fields
   /// that are round-tripped to the client.
   int storeData(ThreadInfo thread, Object data) {
@@ -802,8 +852,8 @@ class IsolateManager {
   /// Configures a new isolate, setting it's exception-pause mode, which
   /// libraries are debuggable, and sending all breakpoints.
   FutureOr<void> _configureIsolate(vm.IsolateRef isolate) async {
-    // TODO(dantup): Exception pause mode
     // TODO(dantup): setLibraryDebuggable
+    await _sendExceptionPauseMode(isolate);
     await _sendBreakpoints(isolate);
   }
 
@@ -895,7 +945,7 @@ class IsolateManager {
   /// all known editor breakpoints will be sent (used for newly-created isoaltes).
   Future<void> _sendBreakpoints(vm.IsolateRef isolate, {String? uri}) async {
     final service = _adapter._vmService;
-    if (service == null) {
+    if (!_debug || service == null) {
       return;
     }
 
@@ -924,6 +974,16 @@ class IsolateManager {
         existingBreakpointsForIsolateAndUri.add(vmBp);
       });
     }
+  }
+
+  /// Sets the exception pause mode for an individual isolate.
+  Future<void> _sendExceptionPauseMode(vm.IsolateRef isolate) async {
+    final service = _adapter._vmService;
+    if (!_debug || service == null) {
+      return;
+    }
+
+    await service.setExceptionPauseMode(isolate.id!, _exceptionPauseMode);
   }
 }
 

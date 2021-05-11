@@ -72,10 +72,12 @@ class DapTestClient {
   Stream<Event> events(String event) =>
       _eventController.stream.where((e) => e.event == event);
 
-  Future<Response> initialize() async {
+  Future<Response> initialize({String exceptionPauseMode = 'None'}) async {
     final responses = await Future.wait([
       event('initialized'),
       sendRequest(InitializeRequestArguments(adapterID: 'test')),
+      sendRequest(
+          SetExceptionBreakpointsArguments(filters: [exceptionPauseMode])),
     ]);
     await sendRequest(ConfigurationDoneArguments());
     return responses[1] as Response; // Return the initialize response.

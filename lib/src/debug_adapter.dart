@@ -121,6 +121,11 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       SetBreakpointsArguments args,
       void Function(SetBreakpointsResponseBody) sendResponse);
 
+  FutureOr<void> setExceptionBreakpointsRequest(
+      Request request,
+      SetExceptionBreakpointsArguments args,
+      void Function(SetExceptionBreakpointsResponseBody) sendResponse);
+
   FutureOr<void> stackTraceRequest(Request request, StackTraceArguments args,
       void Function(StackTraceResponseBody) sendResponse);
 
@@ -178,6 +183,9 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
     } else if (request.command == 'configurationDone') {
       handle(request, configurationDoneRequest,
           ConfigurationDoneArguments.fromJson);
+    } else if (request.command == 'setExceptionBreakpoints') {
+      handle(request, setExceptionBreakpointsRequest,
+          SetExceptionBreakpointsArguments.fromJson);
     } else if (request.command == 'setBreakpoints') {
       handle(request, setBreakpointsRequest, SetBreakpointsArguments.fromJson);
     } else if (request.command == 'stackTrace') {

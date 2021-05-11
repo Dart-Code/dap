@@ -196,6 +196,19 @@ extension DapTestClientExtensions on DapTestClient {
     return stop;
   }
 
+  /// Expects to hit an exception when running the script.
+  Future<StoppedEventBody> hitException(
+      File file, String exceptionPauseMode, int line) async {
+    final stop = expectStop('exception', file: file, line: line);
+
+    await Future.wait([
+      initialize(exceptionPauseMode: exceptionPauseMode),
+      launch(file.path),
+    ], eagerError: true);
+
+    return stop;
+  }
+
   Future<StackTraceResponseBody> getStack(int threadId,
       {required int startFrame, required int numFrames}) async {
     final response = await stackTrace(threadId,
