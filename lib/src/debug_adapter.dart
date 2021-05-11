@@ -82,7 +82,6 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       assert(sendResponseCalled,
           'sendResponse was not called in ${request.command}');
     } catch (e, s) {
-      // TODO(dantup): Review whether this error handling is sufficient.
       final response = Response(
         success: false,
         requestSeq: request.seq,
@@ -216,7 +215,14 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
     } else if (request.command == 'evaluate') {
       handle(request, evaluateRequest, EvaluateArguments.fromJson);
     } else {
-      throw Exception('Unknown command: ${request.command}');
+      final response = Response(
+        success: false,
+        requestSeq: request.seq,
+        seq: _sequence++,
+        command: request.command,
+        message: 'Unknown command: ${request.command}',
+      );
+      _channel.sendResponse(response);
     }
   }
 
