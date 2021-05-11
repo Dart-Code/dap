@@ -38,12 +38,13 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   // a remote PID and therefore doesn't make sense to try and terminate.
   var _allowTerminatingVmServicePid = true;
   final _pidsToTerminate = <int>{};
+  final _debuggerInitializedCompleter = Completer<void>();
   final _configurationDoneCompleter = Completer<void>();
 
   @override
   final parseLaunchArgs = DartLaunchRequestArguments.fromJson;
 
-  // TODO(dantup): Ensure this is cleaned up!
+  /// TODO(dantup): Ensure these are cleaned up!
   final _subscriptions = <StreamSubscription<vm.Event>>[];
 
   DartDebugAdapter(LspByteStreamServerChannel channel, Logger logger)
@@ -51,6 +52,10 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     _isolateManager = IsolateManager(this);
     _converter = ProtocolConverter(this);
   }
+
+  /// Completes the debugger initialization has completed. Used to delay
+  /// processing isolate events while initialization is running.
+  Future<void> get debuggerInitialized => _debuggerInitializedCompleter.future;
 
   FutureOr<void> attachRequest(
     Request request,
@@ -540,6 +545,8 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
         await _isolateManager.resumeIsolate(isolate);
       }
     }));
+
+    _debuggerInitializedCompleter.complete();
   }
 
   void _handleDebugEvent(vm.Event event) {
@@ -710,6 +717,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
 /// and updating breakpoints for each isolate as necessary.
 class IsolateManager {
   final DartDebugAdapter _adapter;
+  final Map<String, Completer<void>> _isolateRegistrations = {};
   final Map<String, ThreadInfo> _threadsByIsolateId = {};
   final Map<int, ThreadInfo> _threadsByThreadId = {};
   int _nextThreadNumber = 1;
@@ -763,16 +771,33 @@ class IsolateManager {
 
   /// Handles Isolate and Debug events
   FutureOr<void> handleEvent(vm.Event event) async {
-    if (event.isolate?.id == null) {
-      // TODO(dantup): Log?
+    final isolateId = event.isolate?.id;
+    if (isolateId == null) {
       return;
     }
+
+    // Delay processed any events until the debugger initialisation has finished
+    // running, as events may arrive (for ex. IsolateRunnable) while it's doing
+    // is own initialisation that this may interfere with.
+    await _adapter.debuggerInitialized;
 
     final eventKind = event.kind;
     if (eventKind == vm.EventKind.kIsolateStart ||
         eventKind == vm.EventKind.kIsolateRunnable) {
       await registerIsolate(event.isolate!, eventKind!);
-    } else if (eventKind == vm.EventKind.kIsolateExit) {
+    }
+
+    // Ensure the thread registration has completed before trying to process
+    // any other events, otherwise we may have races:
+    //
+    // - IsolateRunnable
+    //   (registration asynchronously sets up breakpoints)
+    // - PauseStart
+    //   (if this happens before the registration completes, we may resume before
+    //   the breakpoints were set up).
+    await _isolateRegistrations[isolateId]?.future;
+
+    if (eventKind == vm.EventKind.kIsolateExit) {
       await _handleExit(event);
     } else if (eventKind?.startsWith('Pause') ?? false) {
       await _handlePause(event);
@@ -789,6 +814,11 @@ class IsolateManager {
   /// sent.
   FutureOr<void> registerIsolate(
       vm.IsolateRef isolate, String eventKind) async {
+    // Ensure the completer is set up before doing any async work, so future
+    // events can wait on it.
+    final registrationCompleter =
+        _isolateRegistrations.putIfAbsent(isolate.id!, () => Completer<void>());
+
     final info = _threadsByIsolateId.putIfAbsent(isolate.id!, () {
       final info = ThreadInfo(this, _nextThreadNumber++, isolate);
       _threadsByThreadId[info.threadId] = info;
@@ -802,6 +832,7 @@ class IsolateManager {
     if (eventKind == vm.EventKind.kIsolateRunnable && !info.runnable) {
       info.runnable = true;
       await _configureIsolate(isolate);
+      registrationCompleter.complete();
     }
   }
 
@@ -894,9 +925,11 @@ class IsolateManager {
   /// Configures a new isolate, setting it's exception-pause mode, which
   /// libraries are debuggable, and sending all breakpoints.
   FutureOr<void> _configureIsolate(vm.IsolateRef isolate) async {
-    // TODO(dantup): setLibraryDebuggable
-    await _sendExceptionPauseMode(isolate);
-    await _sendBreakpoints(isolate);
+    await Future.wait([
+      // TODO(dantup): setLibraryDebuggable
+      _sendExceptionPauseMode(isolate),
+      _sendBreakpoints(isolate),
+    ], eagerError: true);
   }
 
   FutureOr<void> _handleExit(vm.Event event) {

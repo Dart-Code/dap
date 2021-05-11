@@ -6,6 +6,7 @@ import 'package:dap/src/debug_adapter_protocol_generated.dart';
 import 'package:dap/src/temp_borrowed_from_analysis_server/lsp_byte_stream_channel.dart';
 import 'package:path/path.dart' as path;
 
+import 'server.dart';
 import 'test_utils.dart';
 
 /// A helper class to simplify interacting with the DapTestServer.
