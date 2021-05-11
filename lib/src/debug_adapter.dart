@@ -40,12 +40,14 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   /// Calls [handler] for an incoming request, using [fromJson] to parse its
   /// arguments from the request.
   ///
-  /// [handler] will provided a function [sendResponse] that it can use to
+  /// [handler] will be provided a function [sendResponse] that it can use to
   /// sends its response without needing to build a [Response] from fields on
   /// the request.
   ///
   /// [handler] must _always_ call [sendResponse], even if the response does not
   /// require a body.
+  ///
+  /// If [handler] throws, its exception will be sent as an error response.
   FutureOr<void> handle<TArg, TResp>(
     Request request,
     FutureOr<void> Function(Request, TArg, void Function(TResp)) handler,
@@ -75,9 +77,22 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
       _channel.sendResponse(response);
     }
 
-    await handler(request, args, sendResponse);
-    assert(sendResponseCalled,
-        'sendResponse was not called in ${request.command}');
+    try {
+      await handler(request, args, sendResponse);
+      assert(sendResponseCalled,
+          'sendResponse was not called in ${request.command}');
+    } catch (e, s) {
+      // TODO(dantup): Review whether this error handling is sufficient.
+      final response = Response(
+        success: false,
+        requestSeq: request.seq,
+        seq: _sequence++,
+        command: request.command,
+        message: '$e',
+        body: '$s',
+      );
+      _channel.sendResponse(response);
+    }
   }
 
   FutureOr<void> initializeRequest(
@@ -147,20 +162,7 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   /// Handles incoming messages from the client editor.
   void _handleIncomingMessage(ProtocolMessage message) {
     if (message is Request) {
-      try {
-        _handleIncomingRequest(message);
-      } catch (e, s) {
-        // TODO(dantup): Review whether this error handling is sufficient.
-        final response = Response(
-          success: false,
-          requestSeq: message.seq,
-          seq: _sequence++,
-          command: message.command,
-          message: '$e',
-          body: '$s',
-        );
-        _channel.sendResponse(response);
-      }
+      _handleIncomingRequest(message);
     } else if (message is Response) {
       // TODO(dantup): Determine how to handle errors in responses from clients.
       _handleIncomingResponse(message);
