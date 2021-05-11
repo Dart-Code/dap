@@ -131,7 +131,6 @@ void main(List<String> args) {
       result.variablesReference,
       '''
       day: 1
-      hashCode: 993694724
       hour: 0
       isUtc: false
       microsecond: 0
@@ -142,11 +141,11 @@ void main(List<String> args) {
       month: 1
       runtimeType: Type (DateTime)
       second: 0
-      timeZoneName: "GMT"
       timeZoneOffset: Duration
       weekday: 6
       year: 2000
       ''',
+      ignore: {'timeZoneName'},
     );
   });
 

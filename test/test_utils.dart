@@ -132,17 +132,33 @@ extension DapTestClientExtensions on DapTestClient {
   /// text representation built from the name/values.
   Future<VariablesResponseBody> expectVariables(
       int variablesReference, String expectedVariables,
-      {int? start, int? count, ignorePrivate = true}) async {
+      {int? start,
+      int? count,
+      ignorePrivate = true,
+      Set<String>? ignore}) async {
     final expectedLines =
         expectedVariables.trim().split('\n').map((l) => l.trim()).toList();
 
     final variables =
         await getVariables(variablesReference, start: start, count: count);
 
+    // If a variable was set to be ignored but wasn't in the list, that's
+    // an error.
+    if (ignore != null) {
+      final variableNames = variables.variables.map((v) => v.name).toSet();
+      for (final ignored in ignore) {
+        expect(variableNames.contains(ignored), isTrue,
+            reason:
+                'Variable "$ignored" should be ignored but was not in the results ($variableNames)');
+      }
+    }
+
     // Format the variables into a simple text representation that's easy to
     // maintain in tests.
     final actual = variables.variables
         .where((v) => ignorePrivate ? !v.name.startsWith('_') : true)
+        .where((v) => !(ignore?.contains(v.name) ?? false))
+        .where((v) => v.name != 'hashCode')
         .map((v) {
       final buffer = StringBuffer();
       final evaluateName = v.evaluateName;
