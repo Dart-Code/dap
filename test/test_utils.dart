@@ -123,7 +123,8 @@ extension DapTestClientExtensions on DapTestClient {
       int frameId, String expectedName, String expectedVariables,
       {ignorePrivate = true}) async {
     final scopes = await getScopes(frameId);
-    final scope = scopes.scopes.firstWhere((s) => s.name == expectedName);
+    final scope = scopes.scopes.firstWhere((s) => s.name == expectedName,
+        orElse: () => throw 'Did not find scope with name $expectedName');
     await expectVariables(scope.variablesReference, expectedVariables);
     return scope;
   }

@@ -65,8 +65,11 @@ class DapTestClient {
           expression: expression, frameId: frameId, context: context));
 
   /// Returns a Future that completes with the next [event] event.
-  Future<Event> event(String event) => _logIfSlow('Event "$event"',
-      _eventController.stream.firstWhere((e) => e.event == event));
+  Future<Event> event(String event) => _logIfSlow(
+      'Event "$event"',
+      _eventController.stream.firstWhere((e) => e.event == event,
+          orElse: () =>
+              throw 'Did not recieve $event event before stream closed'));
 
   /// Returns a stream for [event] events.
   Stream<Event> events(String event) =>
