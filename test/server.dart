@@ -12,6 +12,8 @@ import 'package:pedantic/pedantic.dart';
 import 'client.dart';
 import 'test_utils.dart';
 
+final testInProcess = Platform.environment['DAP_EXTERNAL'] != 'true';
+
 abstract class DapTestServer {
   static var _logNumber = 1;
 
@@ -26,8 +28,6 @@ abstract class DapTestServer {
   void kill();
 
   static FutureOr<DapTestServer> forEnvironment() async {
-    final inProc = Platform.environment['DAP_EXTERNAL'] != 'true';
-
     final logsDir = await logsDirectory;
     Directory(logsDir).createSync();
 
@@ -37,8 +37,8 @@ abstract class DapTestServer {
     final logger = FileLogger(logFile);
 
     logger.log(
-        'Using ${inProc ? 'in-process' : 'out-of-process'} debug adapter.');
-    return inProc
+        'Using ${testInProcess ? 'in-process' : 'out-of-process'} debug adapter.');
+    return testInProcess
         ? DapTestServer.inProcess(logger)
         : DapTestServer.outOfProcess(logger);
   }

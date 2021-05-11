@@ -17,6 +17,15 @@ abstract class Logger {
   void log(String message);
 }
 
+class MultiLogger extends Logger {
+  final Set<Logger> loggers = {};
+
+  MultiLogger();
+
+  @override
+  void log(String message) => loggers.forEach((logger) => logger.log(message));
+}
+
 class VmLogger extends vm.Log {
   final Logger _logger;
 

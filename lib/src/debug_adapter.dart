@@ -12,9 +12,10 @@ void _voidFromJson(Map<String, Object?> obj) => null;
 abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
   int _sequence = 1;
   final LspByteStreamServerChannel _channel;
-  final Logger logger;
+  final logger = MultiLogger();
 
-  DebugAdapter(this._channel, this.logger) {
+  DebugAdapter(this._channel, Logger logger) {
+    this.logger.loggers.add(logger);
     _channel.listen(_handleIncomingMessage);
   }
 
@@ -107,6 +108,16 @@ abstract class DebugAdapter<TLaunchArgs extends LaunchRequestArguments> {
 
   FutureOr<void> scopesRequest(Request request, ScopesArguments args,
       void Function(ScopesResponseBody) sendResponse);
+
+  /// Sends a custom event that is not defined by the DAP spec.
+  void sendCustomEvent(String eventType, Object? body) {
+    final event = Event(
+      seq: _sequence++,
+      event: eventType,
+      body: body,
+    );
+    _channel.sendEvent(event);
+  }
 
   /// Sends an event, lookup up the event type based on the runtimeType of
   /// [body].

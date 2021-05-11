@@ -99,6 +99,10 @@ class DapTestClient {
         args: args,
         dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
         evaluateGettersInDebugViews: evaluateGettersInDebugViews,
+        // When running out of process, VM Service traffic won't be available
+        // to the client-side logger, so force logging on which sends VM Service
+        // traffic in a custom event.
+        sendLogsToClient: !testInProcess,
       ),
       // We can't automatically pick the command when using a custom type
       // (DartLaunchRequestArguments).

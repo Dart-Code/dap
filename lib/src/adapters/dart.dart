@@ -12,6 +12,17 @@ import 'package:path/path.dart' as path;
 import 'package:pedantic/pedantic.dart';
 import 'package:vm_service/vm_service.dart' as vm;
 
+class DapCustomEventLogger implements Logger {
+  final DartDebugAdapter _adapter;
+
+  DapCustomEventLogger(this._adapter);
+
+  @override
+  void log(String message) {
+    _adapter.sendCustomEvent('dart.log', message);
+  }
+}
+
 /// A [DebugAdapter] implementation for running Dart CLI scripts.
 class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   late IsolateManager _isolateManager;
@@ -171,14 +182,18 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       throw Exception('launchRequest requires non-null arguments');
     }
 
+    this.args = args;
+    final debug = args.noDebug != true;
+
+    if (args.sendLogsToClient ?? false) {
+      logger.loggers.add(DapCustomEventLogger(this));
+    }
+
     // Don't start launching until configurationDone.
     if (!_configurationDoneCompleter.isCompleted) {
       logger.log('Waiting for configurationDone request...');
       await _configurationDoneCompleter.future;
     }
-
-    this.args = args;
-    final debug = args.noDebug != true;
 
     _isolateManager.setDebugEnabled(debug);
 
@@ -459,7 +474,6 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       OutputEventBody(
           category: 'console', output: 'Connecting to VM Service at $uri\n'),
     );
-    // TODO(dantup): Support logging of VM traffic.
     final vmService = await _vmServiceConnectUri(
       uri.toString(),
       log: VmLogger(logger),
@@ -635,6 +649,12 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
   final bool? enableAsserts;
   final bool? evaluateGettersInDebugViews;
 
+  /// Whether to send debug logging to clients in a custom `dart.log` event. This
+  /// is used both by the out-of-process tests to ensure the logs contain enough
+  /// information to track down issues, but also by Dart-Code to capture VM
+  /// service traffic in a unified log file.
+  final bool? sendLogsToClient;
+
   DartLaunchRequestArguments({
     Object? restart,
     bool? noDebug,
@@ -647,6 +667,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
     this.vmAdditionalArgs,
     this.enableAsserts,
     this.evaluateGettersInDebugViews,
+    this.sendLogsToClient,
   }) : super(restart: restart, noDebug: noDebug);
 
   DartLaunchRequestArguments.fromMap(Map<String, Object?> obj)
@@ -660,6 +681,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         enableAsserts = obj['enableAsserts'] as bool?,
         evaluateGettersInDebugViews =
             obj['evaluateGettersInDebugViews'] as bool?,
+        sendLogsToClient = obj['sendLogsToClient'] as bool?,
         super.fromMap(obj);
 
   @override
@@ -675,6 +697,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         if (enableAsserts != null) 'enableAsserts': enableAsserts,
         if (evaluateGettersInDebugViews != null)
           'evaluateGettersInDebugViews': evaluateGettersInDebugViews,
+        if (sendLogsToClient != null) 'sendLogsToClient': sendLogsToClient,
       };
 
   static DartLaunchRequestArguments fromJson(Map<String, Object?> obj) =>
