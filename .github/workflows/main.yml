@@ -44,10 +44,10 @@ jobs:
         run: dart analyze
 
       - name: dart test (In Process)
-        run: dart test
+        run: dart test --chain-stack-traces
 
       - name: dart test (Out of Process)
-        run: dart test
+        run: dart test --chain-stack-traces
         env:
           DAP_EXTERNAL: true
 
