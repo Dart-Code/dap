@@ -260,6 +260,17 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       expensive: false,
     ));
 
+    // If the top frame has an exception, add a section for that.
+    final data = _isolateManager.getStoredData(args.frameId);
+    final exceptionReference = data?.thread.exceptionReference;
+    if (exceptionReference != null) {
+      scopes.add(Scope(
+        name: 'Exceptions',
+        variablesReference: exceptionReference,
+        expensive: false,
+      ));
+    }
+
     sendResponse(ScopesResponseBody(scopes: scopes));
   }
 
@@ -424,6 +435,9 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
           variablesReference: 0,
         ));
       } else if (object is vm.Instance) {
+        // TODO(dantup): evaluateName
+        // in the case where args.variablesReference == thread.exceptionReference,
+        // it should be "$e"..
         variables.addAll(_converter.convertVmInstanceToVariablesList(
             thread, object,
             startItem: childStart, numItems: childCount));
@@ -915,12 +929,10 @@ class IsolateManager {
         reason = 'exception';
       }
 
-      // TODO(dantup): Handle exceptions
-      // final exception = event.exception;
-      // if (exception != null) {
-      //   (exception as InstanceWithEvaluateName).evaluateName = "$e";
-      //   thread.exceptionReference = this.storeData(exception);
-      // }
+      final exception = event.exception;
+      if (exception != null) {
+        thread.exceptionReference = thread.storeData(exception);
+      }
 
       _adapter.sendEvent(
           StoppedEventBody(reason: reason, threadId: thread.threadId));
@@ -933,8 +945,7 @@ class IsolateManager {
     if (thread != null) {
       thread.paused = false;
       thread.pauseEvent = null;
-      // TODO(dantup): Handle exceptions
-      // thread.exceptionReference = 0;
+      thread.exceptionReference = 0;
     }
   }
 
@@ -994,6 +1005,7 @@ class ThreadInfo {
   final int threadId;
   var runnable = false;
   var atAsyncSuspension = false;
+  int? exceptionReference;
   var paused = false;
 
   // The most recent pauseEvent for this isolate.

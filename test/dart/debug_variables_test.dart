@@ -52,6 +52,33 @@ void foo() {
     );
   });
 
+  test('provides exception for frames', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  throw 'my error';
+}
+    ''');
+    final exceptionLine = lineWith(testFile, 'throw');
+
+    final stop =
+        await client.hitException(testFile, 'Unhandled', exceptionLine);
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
+    final topFrameId = stack.stackFrames.first.id;
+
+    // Check for an additional Scope named "Exceptions" that includes the
+    // exception.
+    await client.expectScopeVariables(
+      topFrameId,
+      'Exceptions',
+      '''
+      String: "my error"
+      ''',
+    );
+  });
+
   test('renders simple variable fields', () async {
     da = await DapTestServer.forEnvironment();
     client = da.client;
@@ -150,4 +177,8 @@ void main(List<String> args) {
   test('renders a simple map subset', () {
     // TODO(dantup): !
   }, skip: true);
+
+  // TODO(dantup): $e
+  // TODO(dantup): $e evaluateName (so can expand fields)
+  // TODO(dantup): $e evaluateName prepended onto children?
 }
