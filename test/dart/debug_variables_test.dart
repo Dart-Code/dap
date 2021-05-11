@@ -14,6 +14,44 @@ void main() {
     da.kill();
   });
 
+  test('provides variable list for frames', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  final a = 1;
+  foo();
+}
+
+void foo() {
+  final b = 2;
+  print('Hello!'); // BREAKPOINT
+}
+    ''');
+    final breakpointLine = lineWith(testFile, '// BREAKPOINT');
+
+    final stop = await client.hitBreakpoint(testFile, breakpointLine);
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 2);
+
+    // Check top two frames (in `foo` and in `main`).
+    await client.expectScopeVariables(
+      stack.stackFrames[0].id,
+      'Variables',
+      '''
+      b: 2
+      ''',
+    );
+    await client.expectScopeVariables(
+      stack.stackFrames[1].id,
+      'Variables',
+      '''
+      a: 1
+      args: List (0 items)
+      ''',
+    );
+  });
+
   test('renders simple variable fields', () async {
     da = await DapTestServer.forEnvironment();
     client = da.client;

@@ -100,6 +100,9 @@ class DapTestClient {
   Future<Response> next(int threadId) =>
       sendRequest(NextArguments(threadId: threadId));
 
+  Future<Response> scopes(int frameId) =>
+      sendRequest(ScopesArguments(frameId: frameId));
+
   Future<Response> sendRequest(Object? arguments,
       {bool allowFailure = false, String? overrideCommand}) {
     final command = overrideCommand ?? commandTypes[arguments.runtimeType]!;

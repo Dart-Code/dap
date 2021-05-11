@@ -64,7 +64,7 @@ void main(List<String> args) async {
 
     // Step and expect stopping on the next line with a 'step' stop type.
     await Future.wait([
-      client.expectedStop('step', file: testFile, line: stepLine),
+      client.expectStop('step', file: testFile, line: stepLine),
       client.stepIn(stop.threadId!),
     ], eagerError: true);
   });
@@ -89,7 +89,7 @@ void log(String message) { // STEP
 
     // Step and expect stopping in the inner function with a 'step' stop type.
     await Future.wait([
-      client.expectedStop('step', file: testFile, line: stepLine),
+      client.expectStop('step', file: testFile, line: stepLine),
       client.stepIn(stop.threadId!),
     ], eagerError: true);
   });
@@ -115,7 +115,7 @@ void log(String message) {
 
     // Step and expect stopping in the inner function with a 'step' stop type.
     await Future.wait([
-      client.expectedStop('step', file: testFile, line: stepLine),
+      client.expectStop('step', file: testFile, line: stepLine),
       client.stepOut(stop.threadId!),
     ], eagerError: true);
   });

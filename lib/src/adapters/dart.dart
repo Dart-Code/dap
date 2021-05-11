@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:collection/collection.dart';
 import 'package:dap/src/converter.dart';
 import 'package:dap/src/debug_adapter.dart';
 import 'package:dap/src/debug_adapter_protocol_generated.dart' hide Event;
@@ -243,8 +244,18 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   @override
   FutureOr<void> scopesRequest(Request request, ScopesArguments args,
       void Function(ScopesResponseBody) sendResponse) {
-    // TOOD(dantup): Variables + exception!
-    sendResponse(ScopesResponseBody(scopes: []));
+    final scopes = <Scope>[];
+
+    // For local variables, we can just reuse the frameId as variablesReference
+    // as variablesRequest handles stored data of type `Frame`.
+    scopes.add(Scope(
+      name: 'Variables',
+      presentationHint: 'locals',
+      variablesReference: args.frameId,
+      expensive: false,
+    ));
+
+    sendResponse(ScopesResponseBody(scopes: scopes));
   }
 
   @override
@@ -371,7 +382,13 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     final variables = <Variable>[];
 
     if (vmData is vm.Frame) {
-      // TODO(dantup): For Variables list
+      final vars = vmData.vars;
+      if (vars != null) {
+        for (final variable in vars.sortedBy((v) => v.name ?? '')) {
+          variables.add(_converter.convertVmResponseToVariable(variable.value,
+              name: variable.name));
+        }
+      }
     } else if (vmData is vm.MapAssociation) {
       // TODO(dantup): Maps
     } else if (vmData is vm.ObjRef) {

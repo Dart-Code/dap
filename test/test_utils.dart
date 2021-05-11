@@ -47,7 +47,7 @@ extension DapTestClientExtensions on DapTestClient {
   ///
   /// If [file] or [line] are provided, they will be checked against the stop
   /// location for the top stack frame.
-  Future<StoppedEventBody> expectedStop(String reason,
+  Future<StoppedEventBody> expectStop(String reason,
       {File? file, int? line}) async {
     final e = await event('stopped');
     final stop = StoppedEventBody.fromJson(e.body as Map<String, Object?>);
@@ -117,6 +117,17 @@ extension DapTestClientExtensions on DapTestClient {
     return stack;
   }
 
+  /// A helper fetches scopes for a frame, checks for one with the name [name]
+  /// and verifies its variables.
+  Future<Scope> expectScopeVariables(
+      int frameId, String expectedName, String expectedVariables,
+      {ignorePrivate = true}) async {
+    final scopes = await getScopes(frameId);
+    final scope = scopes.scopes.firstWhere((s) => s.name == expectedName);
+    await expectVariables(scope.variablesReference, expectedVariables);
+    return scope;
+  }
+
   /// A helper that verifies the variables list matches [expectedVariables], a
   /// text representation built from the name/values.
   Future<VariablesResponseBody> expectVariables(
@@ -170,7 +181,7 @@ extension DapTestClientExtensions on DapTestClient {
   /// Sets a breakpoint at [line] in [file] and expects to hit it after running
   /// the script.
   Future<StoppedEventBody> hitBreakpoint(File file, int line) async {
-    final stop = expectedStop('breakpoint', file: file, line: line);
+    final stop = expectStop('breakpoint', file: file, line: line);
 
     await Future.wait([
       initialize(),
@@ -203,5 +214,12 @@ extension DapTestClientExtensions on DapTestClient {
     expect(response.command, equals('variables'));
     return VariablesResponseBody.fromJson(
         response.body as Map<String, Object?>);
+  }
+
+  Future<ScopesResponseBody> getScopes(int frameId) async {
+    final response = await scopes(frameId);
+    expect(response.success, isTrue);
+    expect(response.command, equals('scopes'));
+    return ScopesResponseBody.fromJson(response.body as Map<String, Object?>);
   }
 }
