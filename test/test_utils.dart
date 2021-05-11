@@ -218,8 +218,8 @@ extension DapTestClientExtensions on DapTestClient {
   }
 
   /// Expects to hit an exception when running the script.
-  Future<StoppedEventBody> hitException(
-      File file, String exceptionPauseMode, int line) async {
+  Future<StoppedEventBody> hitException(File file,
+      [String exceptionPauseMode = 'Unhandled', int? line]) async {
     final stop = expectStop('exception', file: file, line: line);
 
     await Future.wait([

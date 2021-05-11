@@ -65,4 +65,61 @@ void main(List<String> args) {
       () {
     // TODO(dantup): !
   }, skip: true);
+
+  test(r'evaluates $e to the threads exception (simple type)', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  throw 'my error';
+}
+    ''');
+
+    final stop = await client.hitException(testFile);
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
+    final topFrameId = stack.stackFrames.first.id;
+
+    final result =
+        await client.expectEvalResult(topFrameId, r'$e', '"my error"');
+    expect(result.variablesReference, equals(0));
+  });
+
+  test(r'evaluates $e to the threads exception (complex type)', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  throw Exception('my error');
+}
+    ''');
+
+    final stop = await client.hitException(testFile);
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
+    final topFrameId = stack.stackFrames.first.id;
+
+    final result =
+        await client.expectEvalResult(topFrameId, r'$e', '_Exception');
+    expect(result.variablesReference, greaterThan(0));
+  });
+
+  test(r'evaluates $e.x.y to x.y on the threads exception', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  throw Exception('12345');
+}
+    ''');
+
+    final stop = await client.hitException(testFile);
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
+    final topFrameId = stack.stackFrames.first.id;
+
+    final result =
+        await client.expectEvalResult(topFrameId, r'$e.message.length', '5');
+    expect(result.variablesReference, equals(0));
+  });
 }

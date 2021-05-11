@@ -115,12 +115,33 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       throw 'Global evaluation not currently supported';
     }
 
-    // TODO(dantup): Handle magic expression '$e' to mean the the exception
-    // for the current thread.
+    // $e is used as a special expression that evaluates to the expression on
+    // the top frame. This allows us to construct evaluateNames that evaluate
+    // to the fields down the tree to support some of the debugger functionality
+    // (for example Copy Value, which re-evaluates).
+    final expression = args.expression.trim();
+    final exceptionReference = thread.exceptionReference;
+    final isExceptionExpression =
+        expression == r'$e' || expression.startsWith(r'$e.');
 
-    final result = await vmService?.evaluateInFrame(
-        thread.isolate.id!, frameIndex, args.expression,
-        disableBreakpoints: true);
+    vm.Response? result;
+    if (exceptionReference != null && isExceptionExpression) {
+      final exception = _isolateManager.getStoredData(exceptionReference)?.data
+          as vm.InstanceRef?;
+      if (exception != null) {
+        if (expression == r'$e') {
+          result = exception;
+        } else {
+          result = await vmService?.evaluate(
+              thread.isolate.id!, exception.id!, expression.substring(3),
+              disableBreakpoints: true);
+        }
+      }
+    } else {
+      result = await vmService?.evaluateInFrame(
+          thread.isolate.id!, frameIndex, expression,
+          disableBreakpoints: true);
+    }
 
     if (result is vm.ErrorRef) {
       // TODO(dantup): sendError(result.message);

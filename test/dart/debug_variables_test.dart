@@ -60,10 +60,8 @@ void main(List<String> args) {
   throw 'my error';
 }
     ''');
-    final exceptionLine = lineWith(testFile, 'throw');
 
-    final stop =
-        await client.hitException(testFile, 'Unhandled', exceptionLine);
+    final stop = await client.hitException(testFile);
     final stack =
         await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
     final topFrameId = stack.stackFrames.first.id;
