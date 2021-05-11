@@ -180,7 +180,11 @@ extension DapTestClientExtensions on DapTestClient {
 
   /// Sets a breakpoint at [line] in [file] and expects to hit it after running
   /// the script.
-  Future<StoppedEventBody> hitBreakpoint(File file, int line) async {
+  ///
+  /// Launch options can be customised by passing a custom [launch] function that
+  /// will be used instead of calling `launch(file.path)`.
+  Future<StoppedEventBody> hitBreakpoint(File file, int line,
+      {Future<Response> Function()? launch}) async {
     final stop = expectStop('breakpoint', file: file, line: line);
 
     await Future.wait([
@@ -190,7 +194,7 @@ extension DapTestClientExtensions on DapTestClient {
             source: Source(path: file.path),
             breakpoints: [SourceBreakpoint(line: line)]),
       ),
-      launch(file.path),
+      launch?.call() ?? this.launch(file.path),
     ], eagerError: true);
 
     return stop;

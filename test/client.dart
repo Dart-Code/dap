@@ -84,7 +84,10 @@ class DapTestClient {
   }
 
   Future<Response> launch(String program,
-      {List<String>? args, FutureOr<String>? cwd, bool? noDebug}) async {
+      {List<String>? args,
+      FutureOr<String>? cwd,
+      bool? noDebug,
+      bool? evaluateGettersInDebugViews}) async {
     return sendRequest(
       DartLaunchRequestArguments(
         noDebug: noDebug,
@@ -92,6 +95,7 @@ class DapTestClient {
         cwd: await (cwd ?? testApplicationsDirectory),
         args: args,
         dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
+        evaluateGettersInDebugViews: evaluateGettersInDebugViews,
       ),
       // We can't automatically pick the command when using a custom type
       // (DartLaunchRequestArguments).

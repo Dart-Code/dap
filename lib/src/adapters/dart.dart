@@ -17,11 +17,11 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   late IsolateManager _isolateManager;
   late ProtocolConverter _converter;
   Process? _process;
-  String? cwd;
+  DartLaunchRequestArguments? args;
   File? _vmServiceInfoFile;
   StreamSubscription<FileSystemEvent>? _vmServiceInfoFileWatcher;
   final _tmpDir = Directory.systemTemp;
-  vm.VmServiceInterface? _vmService;
+  vm.VmServiceInterface? vmService;
   // We normally track the pid from the VM service to terminate the VM
   // afterwards (since [_process] may be a shell), but for `flutter run` it's
   // a remote PID and therefore doesn't make sense to try and terminate.
@@ -103,7 +103,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     // TODO(dantup): Handle magic expression '$e' to mean the the exception
     // for the current thread.
 
-    final result = await _vmService?.evaluateInFrame(
+    final result = await vmService?.evaluateInFrame(
         thread.isolate.id!, frameIndex, args.expression,
         disableBreakpoints: true);
 
@@ -177,8 +177,8 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
       await _configurationDoneCompleter.future;
     }
 
+    this.args = args;
     final debug = args.noDebug != true;
-    cwd = args.cwd;
 
     _isolateManager.setDebugEnabled(debug);
 
@@ -228,7 +228,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     final process = await Process.start(
       vmPath,
       processArgs,
-      workingDirectory: cwd,
+      workingDirectory: args.cwd,
     );
     _process = process;
 
@@ -341,8 +341,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     } else {
       // Otherwise, send the request on to the VM.
       final limit = startFrame + numFrames;
-      final stack =
-          await _vmService?.getStack(thread.isolate.id!, limit: limit);
+      final stack = await vmService?.getStack(thread.isolate.id!, limit: limit);
       final frames = stack?.frames;
 
       if (stack != null && frames != null) {
@@ -438,7 +437,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
         // TODO(dantup): evaluateName
         // in the case where args.variablesReference == thread.exceptionReference,
         // it should be "$e"..
-        variables.addAll(_converter.convertVmInstanceToVariablesList(
+        variables.addAll(await _converter.convertVmInstanceToVariablesList(
             thread, object,
             startItem: childStart, numItems: childCount));
       } else {
@@ -469,7 +468,7 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     // TODO(dantup): VS Code currently depends on a custom dart.debuggerUris
     // event to notify it of VM Services that become available. If this is still
     // required, it will need implementing here.
-    _vmService = vmService;
+    this.vmService = vmService;
 
     _subscriptions.addAll([
       vmService.onIsolateEvent.listen(_handleIsolateEvent),
@@ -634,6 +633,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
   final int? vmServicePort;
   final List<String>? vmAdditionalArgs;
   final bool? enableAsserts;
+  final bool? evaluateGettersInDebugViews;
 
   DartLaunchRequestArguments({
     Object? restart,
@@ -646,6 +646,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
     this.vmServicePort,
     this.vmAdditionalArgs,
     this.enableAsserts,
+    this.evaluateGettersInDebugViews,
   }) : super(restart: restart, noDebug: noDebug);
 
   DartLaunchRequestArguments.fromMap(Map<String, Object?> obj)
@@ -657,6 +658,8 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         vmServicePort = obj['vmServicePort'] as int?,
         vmAdditionalArgs = (obj['vmAdditionalArgs'] as List?)?.cast<String>(),
         enableAsserts = obj['enableAsserts'] as bool?,
+        evaluateGettersInDebugViews =
+            obj['evaluateGettersInDebugViews'] as bool?,
         super.fromMap(obj);
 
   @override
@@ -670,6 +673,8 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         if (vmServicePort != null) 'vmServicePort': vmServicePort,
         if (vmAdditionalArgs != null) 'vmAdditionalArgs': vmAdditionalArgs,
         if (enableAsserts != null) 'enableAsserts': enableAsserts,
+        if (evaluateGettersInDebugViews != null)
+          'evaluateGettersInDebugViews': evaluateGettersInDebugViews,
       };
 
   static DartLaunchRequestArguments fromJson(Map<String, Object?> obj) =>
@@ -723,7 +728,7 @@ class IsolateManager {
 
   Future<T> getObject<T extends vm.Response>(
       vm.IsolateRef isolate, vm.ObjRef object) async {
-    final res = await _adapter._vmService?.getObject(isolate.id!, object.id!);
+    final res = await _adapter.vmService?.getObject(isolate.id!, object.id!);
     return res as T;
   }
 
@@ -816,7 +821,7 @@ class IsolateManager {
 
     thread.hasPendingResume = true;
     try {
-      await _adapter._vmService?.resume(thread.isolate.id!, step: resumeType);
+      await _adapter.vmService?.resume(thread.isolate.id!, step: resumeType);
     } finally {
       thread.hasPendingResume = false;
     }
@@ -955,7 +960,7 @@ class IsolateManager {
   /// when breakpoints are modified for a single file in the editor). Otherwise
   /// all known editor breakpoints will be sent (used for newly-created isoaltes).
   Future<void> _sendBreakpoints(vm.IsolateRef isolate, {String? uri}) async {
-    final service = _adapter._vmService;
+    final service = _adapter.vmService;
     if (!_debug || service == null) {
       return;
     }
@@ -989,7 +994,7 @@ class IsolateManager {
 
   /// Sets the exception pause mode for an individual isolate.
   Future<void> _sendExceptionPauseMode(vm.IsolateRef isolate) async {
-    final service = _adapter._vmService;
+    final service = _adapter.vmService;
     if (!_debug || service == null) {
       return;
     }

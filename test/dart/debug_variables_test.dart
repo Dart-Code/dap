@@ -100,21 +100,55 @@ void main(List<String> args) {
       result.variablesReference,
       '''
       isUtc: false
-      year: 2000
-      month: 1
-      day: 1
       ''',
     );
   });
 
   test('renders variable getters when evaluateGettersInDebugViews=true',
       () async {
-    // TODO(dantup): !
-    // As above, but also expect:
-    // year: 2000
-    // month: 1
-    // day: 1
-  }, skip: true);
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) {
+  print('Hello!'); // BREAKPOINT
+}
+    ''');
+    final breakpointLine = lineWith(testFile, '// BREAKPOINT');
+
+    final stop = await client.hitBreakpoint(
+      testFile,
+      breakpointLine,
+      launch: () =>
+          client.launch(testFile.path, evaluateGettersInDebugViews: true),
+    );
+    final stack =
+        await client.getStack(stop.threadId!, startFrame: 0, numFrames: 1);
+    final topFrameId = stack.stackFrames.first.id;
+
+    final result = await client.expectEvalResult(
+        topFrameId, 'DateTime(2000, 1, 1)', 'DateTime');
+    await client.expectVariables(
+      result.variablesReference,
+      '''
+      day: 1
+      hashCode: 993694724
+      hour: 0
+      isUtc: false
+      microsecond: 0
+      microsecondsSinceEpoch: 946684800000000
+      millisecond: 0
+      millisecondsSinceEpoch: 946684800000
+      minute: 0
+      month: 1
+      runtimeType: Type (DateTime)
+      second: 0
+      timeZoneName: "GMT"
+      timeZoneOffset: Duration
+      weekday: 6
+      year: 2000
+      ''',
+    );
+  });
 
   test('renders a simple list', () async {
     da = await DapTestServer.forEnvironment();

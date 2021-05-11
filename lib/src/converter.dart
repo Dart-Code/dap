@@ -25,10 +25,11 @@ class ProtocolConverter {
   ProtocolConverter(this._adapter);
 
   String convertToRelativePath(String sourcePath) {
-    if (_adapter.cwd == null) {
+    final cwd = _adapter.args?.cwd;
+    if (cwd == null) {
       return sourcePath;
     }
-    final rel = path.relative(sourcePath, from: _adapter.cwd);
+    final rel = path.relative(sourcePath, from: cwd);
     return !rel.startsWith('..') ? rel : sourcePath;
   }
 
@@ -70,9 +71,9 @@ class ProtocolConverter {
 
   /// Converts a [vm.Instace] to a list of [dap.Variable]s, one for each
   /// field/member/element/association.
-  List<dap.Variable> convertVmInstanceToVariablesList(
+  Future<List<dap.Variable>> convertVmInstanceToVariablesList(
       ThreadInfo thread, vm.Instance instance,
-      {int? startItem = 0, int? numItems}) {
+      {int? startItem = 0, int? numItems}) async {
     final elements = instance.elements;
     final associations = instance.associations;
     final fields = instance.fields;
@@ -101,11 +102,32 @@ class ProtocolConverter {
         );
       }).toList();
     } else if (fields != null) {
-      return fields
-          .sortedBy((field) => field.decl?.name ?? '')
+      final variables = fields
           .map((field) => convertVmResponseToVariable(field.value,
               name: field.decl?.name ?? '<unnamed field>'))
           .toList();
+
+      // Stitch in getters if enabled.
+      final service = _adapter.vmService;
+      if (service != null &&
+          (_adapter.args?.evaluateGettersInDebugViews ?? false)) {
+        // Collect getter names for this instances class and its supers.
+        final getterNames =
+            await _getterNamesForHierarchy(thread, instance.classRef);
+
+        // Evaluate each getter.
+        final getterResults = await Future.wait(getterNames.map((name) async {
+          final response =
+              await service.evaluate(thread.isolate.id!, instance.id!, name);
+          // Convert results to variables.
+          return convertVmResponseToVariable(response, name: name);
+        }));
+
+        variables.addAll(getterResults);
+      }
+
+      variables.sortBy((v) => v.name);
+      return variables;
     } else {
       // TODO(dantup): !
       return [];
@@ -237,5 +259,36 @@ class ProtocolConverter {
     } else {
       return null;
     }
+  }
+
+  Future<Set<String>> _getterNamesForHierarchy(
+      ThreadInfo thread, vm.ClassRef? classRef) async {
+    final getterNames = <String>{};
+    final service = _adapter.vmService;
+    while (service != null && classRef != null) {
+      final classResponse =
+          await service.getObject(thread.isolate.id!, classRef.id!);
+      if (classResponse is! vm.Class) {
+        break;
+      }
+      final functions = classResponse.functions;
+      if (functions != null) {
+        final instanceFields = functions.where((f) =>
+            // TODO(dantup): Is there a better way to get just the getters?
+            f.json?['_kind'] == 'GetterFunction' &&
+            !(f.isStatic ?? false) &&
+            !(f.isConst ?? false));
+        getterNames.addAll(instanceFields.map((f) => f.name!));
+      }
+
+      classRef = classResponse.superClass;
+    }
+
+    // TODO(dantup): Check this (comment comes from Dart-Code DAP).
+    // Remove _identityHashCode because it seems to throw
+    // (and probably isn't useful to the user).
+    getterNames.remove('_identityHashCode');
+
+    return getterNames;
   }
 }
