@@ -119,4 +119,26 @@ void log(String message) {
       client.stepOut(stop.threadId!),
     ], eagerError: true);
   });
+
+  test('does not step into SDK code with debugSdkLibraries=false', () {},
+      skip: true);
+
+  test('steps into SDK code with debugSdkLibraries=true', () {}, skip: true);
+
+  test(
+      'does not step into external package code with debugExternalPackageLibraries=false',
+      () {},
+      skip: true);
+
+  test(
+      'steps into external package code with debugExternalPackageLibraries=true',
+      () {},
+      skip: true);
+
+  test('allows changing debug settings during session', () {
+    // TODO(dantup): !
+    // Dart-Code's DAP has a custom method that allows an editor to change
+    // the debug settings (debugSdkLibraries/debugExternalPackageLibraries)
+    // during a debug session.
+  }, skip: true);
 }
