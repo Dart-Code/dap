@@ -498,10 +498,8 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   Future<void> _connectDebugger(Uri uri) async {
     uri = _normaliseVmServiceUri(uri);
     logger.log('Connecting to debugger at $uri');
-    sendEvent(
-      OutputEventBody(
-          category: 'console', output: 'Connecting to VM Service at $uri\n'),
-    );
+
+    _sendOutput('console', 'Connecting to VM Service at $uri\n');
     final vmService = await _vmServiceConnectUri(
       uri.toString(),
       log: VmLogger(logger),
@@ -579,11 +577,9 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
   void _handleExitCode(int code) {
     final codeSuffix = code == 0 ? '' : ' ($code)';
     logger.log('Process exited ($code)');
-    sendEvent(
-      // Always add a newline since the last printed text might not have had
-      // one.
-      OutputEventBody(category: 'console', output: '\nExited$codeSuffix.'),
-    );
+    // Always add a leading newline since the last written text might not have
+    // had one.
+    _sendOutput('console', '\nExited$codeSuffix.');
     sendEvent(TerminatedEventBody());
   }
 
@@ -593,18 +589,52 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
     _isolateManager.handleEvent(event);
   }
 
-  void _handleLoggingEvent(vm.Event event) {}
+  Future<void> _handleLoggingEvent(vm.Event event) async {
+    final record = event.logRecord;
+    final thread = _isolateManager.threadForIsolate(event.isolate);
+    if (record == null || thread == null) {
+      return;
+    }
+
+    FutureOr<String?> asString(vm.InstanceRef? ref) {
+      if (ref == null || ref.kind == vm.InstanceKind.kNull) {
+        return null;
+      }
+      return _converter.convertVmInstanceRefToDisplayString(thread, ref,
+          allowCallingToString: true, suppressQuotesAroundString: true);
+    }
+
+    var loggerName = await asString(record.loggerName);
+    if (loggerName?.isEmpty ?? true) {
+      loggerName = 'log';
+    }
+    final message = await asString(record.message);
+    final error = await asString(record.error);
+    final stack = await asString(record.stackTrace);
+
+    final prefix = '[$loggerName] ';
+
+    if (message != null) {
+      _sendPrefixedOutput('stdout', prefix, '$message\n');
+    }
+    if (error != null) {
+      _sendPrefixedOutput('stderr', prefix, '$error\n');
+    }
+    if (stack != null) {
+      _sendPrefixedOutput('stderr', prefix, '$stack\n');
+    }
+  }
 
   void _handleServiceEvent(vm.Event event) {}
 
   void _handleStderr(List<int> data) {
-    sendEvent(OutputEventBody(category: 'stderr', output: utf8.decode(data)));
+    _sendOutput('stderr', utf8.decode(data));
   }
 
   void _handleStderrEvent(vm.Event event) {}
 
   void _handleStdout(List<int> data) {
-    sendEvent(OutputEventBody(category: 'stdout', output: utf8.decode(data)));
+    _sendOutput('stdout', utf8.decode(data));
   }
 
   void _handleStdoutEvent(vm.Event event) {}
@@ -635,6 +665,22 @@ class DartDebugAdapter extends DebugAdapter<DartLaunchRequestArguments> {
         // Switch http -> ws, https -> wss
         scheme: scheme,
         path: path);
+  }
+
+  /// Sends an OutputEvent (without a newline, since calls to this method
+  /// may be used by buffered data).
+  void _sendOutput(String category, String message) {
+    sendEvent(OutputEventBody(category: category, output: message));
+  }
+
+  /// Sends an OutputEvent for [message], prefixed with [prefix] and with [message]
+  /// indented to after the prefix. Assumes the output is in full lines and will
+  /// always include a terminating newline.
+  void _sendPrefixedOutput(String category, String prefix, String message) {
+    final indentString = ' ' * prefix.length;
+    final indentedMessage =
+        message.trimRight().split('\n').join('\n$indentString');
+    _sendOutput(category, '$prefix$indentedMessage\n');
   }
 
   /// Connect to the given uri and return a new [VmService] instance.
@@ -952,6 +998,9 @@ class IsolateManager {
     _storedData[id] = _StoredData(thread, data);
     return id;
   }
+
+  ThreadInfo? threadForIsolate(vm.IsolateRef? isolate) =>
+      isolate?.id != null ? _threadsByIsolateId[isolate!.id!] : null;
 
   /// Configures a new isolate, setting it's exception-pause mode, which
   /// libraries are debuggable, and sending all breakpoints.

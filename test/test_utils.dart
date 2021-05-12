@@ -132,6 +132,20 @@ extension DapTestClientExtensions on DapTestClient {
     return scope;
   }
 
+  Future<List<OutputEventBody>> collectOutput(
+      {File? file, Future<Response> Function()? launch}) async {
+    final outputEventsFuture = outputEvents.toList();
+
+    // Launch script and wait for termination.
+    await Future.wait([
+      event('terminated'),
+      initialize(),
+      launch?.call() ?? this.launch(file!.path),
+    ], eagerError: true);
+
+    return outputEventsFuture;
+  }
+
   /// A helper that verifies the variables list matches [expectedVariables], a
   /// text representation built from the name/values.
   Future<VariablesResponseBody> expectVariables(

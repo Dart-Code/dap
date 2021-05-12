@@ -14,17 +14,13 @@ void main(List<String> args) async {
   print('args: $args');
 }
     ''');
-    final outputEventsFuture = client.outputEvents.toList();
 
-    // Launch script and wait for termination.
-    await Future.wait([
-      client.event('terminated'),
-      client.initialize(),
-      client.launch(testFile.path, args: ['one', 'two'])
-    ], eagerError: true);
-
-    // Check expected output events were recieved.
-    final outputEvents = await outputEventsFuture;
+    final outputEvents = await client.collectOutput(
+      launch: () => client.launch(
+        testFile.path,
+        args: ['one', 'two'],
+      ),
+    );
 
     final vmConnection = outputEvents.first;
     expect(vmConnection.output,

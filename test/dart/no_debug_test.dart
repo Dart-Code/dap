@@ -14,17 +14,14 @@ void main(List<String> args) async {
   print('args: $args');
 }
     ''');
-    final outputEventsFuture = client.outputEvents.toList();
 
-    // Launch script and wait for termination.
-    await Future.wait([
-      client.event('terminated'),
-      client.initialize(),
-      client.launch(testFile.path, noDebug: true, args: ['one', 'two'])
-    ], eagerError: true);
-
-    // Check expected output events were recieved.
-    final outputEvents = await outputEventsFuture;
+    final outputEvents = await client.collectOutput(
+      launch: () => client.launch(
+        testFile.path,
+        noDebug: true,
+        args: ['one', 'two'],
+      ),
+    );
 
     final output = outputEvents.map((e) => e.output).join();
     expectLines(output, [
