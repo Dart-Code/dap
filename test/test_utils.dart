@@ -48,7 +48,7 @@ extension DapTestClientExtensions on DapTestClient {
   /// If [file] or [line] are provided, they will be checked against the stop
   /// location for the top stack frame.
   Future<StoppedEventBody> expectStop(String reason,
-      {File? file, int? line}) async {
+      {File? file, int? line, String? sourceName}) async {
     final e = await event('stopped');
     final stop = StoppedEventBody.fromJson(e.body as Map<String, Object?>);
     expect(stop.reason, equals(reason));
@@ -59,6 +59,9 @@ extension DapTestClientExtensions on DapTestClient {
 
     if (file != null) {
       expect(frame.source!.path, equals(file.path));
+    }
+    if (sourceName != null) {
+      expect(frame.source!.name, equals(sourceName));
     }
     if (line != null) {
       expect(frame.line, equals(line));

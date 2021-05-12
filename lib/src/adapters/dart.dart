@@ -675,6 +675,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
   final int? vmServicePort;
   final List<String>? vmAdditionalArgs;
   final bool? enableAsserts;
+  final bool? debugSdkLibraries;
   final bool? evaluateGettersInDebugViews;
   final bool? evaluateToStringInDebugViews;
 
@@ -695,6 +696,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
     this.vmServicePort,
     this.vmAdditionalArgs,
     this.enableAsserts,
+    this.debugSdkLibraries,
     this.evaluateGettersInDebugViews,
     this.evaluateToStringInDebugViews,
     this.sendLogsToClient,
@@ -709,6 +711,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         vmServicePort = obj['vmServicePort'] as int?,
         vmAdditionalArgs = (obj['vmAdditionalArgs'] as List?)?.cast<String>(),
         enableAsserts = obj['enableAsserts'] as bool?,
+        debugSdkLibraries = obj['debugSdkLibraries'] as bool?,
         evaluateGettersInDebugViews =
             obj['evaluateGettersInDebugViews'] as bool?,
         evaluateToStringInDebugViews =
@@ -727,6 +730,7 @@ class DartLaunchRequestArguments extends LaunchRequestArguments {
         if (vmServicePort != null) 'vmServicePort': vmServicePort,
         if (vmAdditionalArgs != null) 'vmAdditionalArgs': vmAdditionalArgs,
         if (enableAsserts != null) 'enableAsserts': enableAsserts,
+        if (debugSdkLibraries != null) 'debugSdkLibraries': debugSdkLibraries,
         if (evaluateGettersInDebugViews != null)
           'evaluateGettersInDebugViews': evaluateGettersInDebugViews,
         if (evaluateToStringInDebugViews != null)
@@ -953,7 +957,7 @@ class IsolateManager {
   /// libraries are debuggable, and sending all breakpoints.
   FutureOr<void> _configureIsolate(vm.IsolateRef isolate) async {
     await Future.wait([
-      // TODO(dantup): setLibraryDebuggable
+      _sendLibraryDebuggables(isolate),
       _sendExceptionPauseMode(isolate),
       _sendBreakpoints(isolate),
     ], eagerError: true);
@@ -1037,6 +1041,25 @@ class IsolateManager {
     }
   }
 
+  bool _isExternalPackageLibrary(vm.LibraryRef library) =>
+      // TODO(dantup): This needs to check if it's _external_, eg. is flutter,
+      // flutter_test or from pubcache (not a local path package).
+      library.uri?.startsWith('package:') ?? false;
+
+  bool _isSdkLibrary(vm.LibraryRef library) =>
+      library.uri?.startsWith('dart:') ?? false;
+
+  bool _libaryIsDebuggable(vm.LibraryRef library) {
+    if (_isSdkLibrary(library)) {
+      return _adapter.args?.debugSdkLibraries ?? false;
+      // TODO(dantup): !
+      // } else if (_isExternalPackageLibrary(library)) {
+      //   return _adapter.args?.debugExternalPackageLibraries ?? false;
+    } else {
+      return true;
+    }
+  }
+
   /// Sets breakpoints for an individual isolate.
   ///
   /// If [uri] is provided, only breakpoints for that URI will be sent (used
@@ -1083,6 +1106,29 @@ class IsolateManager {
     }
 
     await service.setExceptionPauseMode(isolate.id!, _exceptionPauseMode);
+  }
+
+  /// calls setLibraryDebuggable for all libraries based on the debug settings.
+  Future<void> _sendLibraryDebuggables(vm.IsolateRef isolateRef) async {
+    final service = _adapter.vmService;
+    if (!_debug || service == null) {
+      return;
+    }
+
+    final isolateId = isolateRef.id;
+    if (isolateId == null) {
+      return;
+    }
+
+    final isolate = await service.getIsolate(isolateId);
+    final libraries = isolate.libraries;
+    if (libraries == null) {
+      return;
+    }
+    await Future.wait(libraries.map((library) async {
+      final isDebuggable = _libaryIsDebuggable(library);
+      await service.setLibraryDebuggable(isolateId, library.id!, isDebuggable);
+    }));
   }
 }
 

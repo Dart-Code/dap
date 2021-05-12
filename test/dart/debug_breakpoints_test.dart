@@ -120,10 +120,55 @@ void log(String message) {
     ], eagerError: true);
   });
 
-  test('does not step into SDK code with debugSdkLibraries=false', () {},
-      skip: true);
+  test('does not step into SDK code with debugSdkLibraries=false', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) async {
+  print('Hello!'); // BREAKPOINT
+  print('Hello!'); // STEP
+}
+    ''');
+    final breakpointLine = lineWith(testFile, '// BREAKPOINT');
+    final stepLine = lineWith(testFile, '// STEP');
 
-  test('steps into SDK code with debugSdkLibraries=true', () {}, skip: true);
+    // Hit the initial breakpoint.
+    final stop = await client.hitBreakpoint(testFile, breakpointLine);
+
+    // Step in and expect stopping on the next line (don't go into print).
+    await Future.wait([
+      client.expectStop('step', file: testFile, line: stepLine),
+      client.stepIn(stop.threadId!),
+    ], eagerError: true);
+  });
+
+  test('steps into SDK code with debugSdkLibraries=true', () async {
+    da = await DapTestServer.forEnvironment();
+    client = da.client;
+    final testFile = await createTestFile(r'''
+void main(List<String> args) async {
+  print('Hello!'); // BREAKPOINT
+  print('Hello!');
+}
+    ''');
+    final breakpointLine = lineWith(testFile, '// BREAKPOINT');
+
+    // Hit the initial breakpoint.
+    final stop = await client.hitBreakpoint(
+      testFile,
+      breakpointLine,
+      launch: () => client.launch(
+        testFile.path,
+        debugSdkLibraries: true,
+      ),
+    );
+
+    // Step in and expect to go into print.
+    await Future.wait([
+      client.expectStop('step', sourceName: 'dart:core/print.dart'),
+      client.stepIn(stop.threadId!),
+    ], eagerError: true);
+  });
 
   test(
       'does not step into external package code with debugExternalPackageLibraries=false',

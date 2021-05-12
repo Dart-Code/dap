@@ -92,6 +92,7 @@ class DapTestClient {
     List<String>? args,
     FutureOr<String>? cwd,
     bool? noDebug,
+    bool? debugSdkLibraries,
     bool? evaluateGettersInDebugViews,
     bool? evaluateToStringInDebugViews,
   }) async {
@@ -102,6 +103,7 @@ class DapTestClient {
         cwd: await (cwd ?? testApplicationsDirectory),
         args: args,
         dartSdkPath: path.dirname(path.dirname(Platform.resolvedExecutable)),
+        debugSdkLibraries: debugSdkLibraries,
         evaluateGettersInDebugViews: evaluateGettersInDebugViews,
         evaluateToStringInDebugViews: evaluateToStringInDebugViews,
         // When running out of process, VM Service traffic won't be available
