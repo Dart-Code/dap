@@ -109,7 +109,7 @@ class DapTestClient {
         // When running out of process, VM Service traffic won't be available
         // to the client-side logger, so force logging on which sends VM Service
         // traffic in a custom event.
-        sendLogsToClient: !testInProcess,
+        sendLogsToClient: dapClientType != DapMode.internal,
       ),
       // We can't automatically pick the command when using a custom type
       // (DartLaunchRequestArguments).

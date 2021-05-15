@@ -46,10 +46,15 @@ jobs:
       - name: dart test (In Process)
         run: dart test --chain-stack-traces
 
-      - name: dart test (Out of Process)
-        run: dart test --chain-stack-traces
-        env:
-          DAP_EXTERNAL: true
+      - name: dart test (Out of Process single-session)
+        run: DAP_EXTERNAL=true dart test --chain-stack-traces
+
+      - name: dart test (Out of Process multi-session)
+        run: |
+          export DAP_EXTERNAL=9090
+          dart bin/main.dart --port=$DAP_EXTERNAL &
+          dart test --chain-stack-traces
+          pkill dart
 
       - uses: actions/upload-artifact@v2
         if: always()

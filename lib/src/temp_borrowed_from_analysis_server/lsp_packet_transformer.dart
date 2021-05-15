@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 class InvalidEncodingError {
   final String headers;
@@ -104,5 +105,30 @@ class LspPacketTransformer extends StreamTransformerBase<List<int>, String> {
         .firstWhere((h) => h.startsWith('Content-Type'), orElse: () => '');
     final encoding = _extractEncoding(contentTypeHeader);
     return LspHeaders(asString, int.parse(length), encoding);
+  }
+}
+
+/// Transforms a stream of [Uint8List]s to [List<int>]s. Used because
+/// [ServerSocket] and [Socket] use [Uint8List] but stdin and stdout use
+/// [List<int>] and the server needs to operate against both.
+class Uint8ListTransformer extends StreamTransformerBase<Uint8List, List<int>> {
+  // TODO(dantup): Is there a built-in (or better) way to do this?
+  @override
+  Stream<List<int>> bind(Stream<Uint8List> stream) {
+    late StreamSubscription<Uint8List> input;
+    late StreamController<List<int>> _output;
+    _output = StreamController<List<int>>(
+      onListen: () {
+        input = stream.listen(
+          (uints) => _output.add(uints),
+          onError: _output.addError,
+          onDone: _output.close,
+        );
+      },
+      onPause: () => input.pause(),
+      onResume: () => input.resume(),
+      onCancel: () => input.cancel(),
+    );
+    return _output.stream;
   }
 }

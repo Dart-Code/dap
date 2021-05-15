@@ -8,7 +8,7 @@
 			"program": "${file}"
 		},
 		{
-			"name": "Current Test File (Out of Process)",
+			"name": "Current Test File (Out of Process single-session)",
 			"request": "launch",
 			"type": "dart",
 			"program": "${file}",
@@ -16,14 +16,29 @@
 				"for": [
 					"run-test",
 					"run-test-file",
-					"debug-test",
-					"debug-test-file"
 				],
 				"path": "test",
-				"title": "${debugType} (Out-of-Proc)"
+				"title": "${debugType} (Out-of-Proc stdin)"
 			},
 			"env": {
 				"DAP_EXTERNAL": true,
+			}
+		},
+		{
+			"name": "Current Test File (Out of Process multi-session server)",
+			"request": "launch",
+			"type": "dart",
+			"program": "${file}",
+			"codeLens": {
+				"for": [
+					"run-test",
+					"run-test-file",
+				],
+				"path": "test",
+				"title": "${debugType} (Out-of-Proc server)"
+			},
+			"env": {
+				"DAP_EXTERNAL": 9090,
 			}
 		},
 		{
